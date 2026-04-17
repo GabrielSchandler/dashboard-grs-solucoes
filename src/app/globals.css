@@ -49,6 +49,11 @@ button {
   padding: 12px 0 24px;
 }
 
+.tvShell {
+  width: min(1880px, calc(100% - 24px));
+  padding-top: 8px;
+}
+
 .topBar {
   display: grid;
   grid-template-columns: minmax(360px, 1fr) auto auto minmax(172px, auto);
@@ -358,6 +363,40 @@ button {
   margin-bottom: 12px;
 }
 
+.pulseGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.miniMetric {
+  border: 1px solid #272727;
+  border-radius: 8px;
+  background: #101010;
+  padding: 12px 14px;
+}
+
+.miniMetric span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.miniMetric strong {
+  display: block;
+  margin-top: 6px;
+  color: white;
+  font-size: 22px;
+}
+
+.miniMetric small {
+  color: var(--soft);
+  font-size: 12px;
+}
+
 .wideGrid {
   display: grid;
   grid-template-columns: minmax(520px, 1.4fr) minmax(380px, 0.8fr);
@@ -587,6 +626,430 @@ button {
   text-align: center;
 }
 
+.tvScreen {
+  min-height: calc(100vh - 16px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.tvHeader {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.tvHeader h2 {
+  margin: 8px 0 3px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.tvHeader p,
+.tvHeader span,
+.tvMetric p,
+.tvFooter span {
+  margin: 0;
+  color: var(--soft);
+}
+
+.tvTime,
+.tvWeather,
+.tvMetric,
+.tvTotal,
+.tvBody > section,
+.tvRankings,
+.tvFooter {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+}
+
+.tvTime,
+.tvWeather {
+  min-width: 142px;
+  padding: 12px 14px;
+  text-align: right;
+}
+
+.tvTime strong,
+.tvWeather strong {
+  display: block;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.tvTime span,
+.tvWeather span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tvHero {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.55fr) repeat(3, minmax(190px, 0.6fr));
+  gap: 12px;
+}
+
+.tvTotal {
+  padding: 20px;
+  border-color: #481717;
+  background:
+    linear-gradient(135deg, rgba(224, 32, 32, 0.18), transparent 44%),
+    linear-gradient(180deg, #181111, #101010);
+}
+
+.tvTotal > span,
+.tvMetric span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tvTotal > strong {
+  display: block;
+  margin: 8px 0 14px;
+  font-size: 60px;
+  line-height: 1;
+}
+
+.tvGoalRail {
+  position: relative;
+  height: 16px;
+  border-radius: 999px;
+  background: #282828;
+  overflow: hidden;
+}
+
+.tvGoalRail i,
+.tvGoalRail b {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+}
+
+.tvGoalRail i {
+  background: linear-gradient(90deg, var(--red-2), var(--red));
+}
+
+.tvGoalRail b {
+  background: linear-gradient(90deg, rgba(241, 201, 75, 0.25), var(--yellow));
+  opacity: 0.75;
+}
+
+.tvTotal footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9px;
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tvMetric {
+  display: grid;
+  align-content: space-between;
+  min-height: 166px;
+  padding: 18px;
+}
+
+.tvMetric strong {
+  display: block;
+  color: white;
+  font-size: 28px;
+  line-height: 1.08;
+}
+
+.tvMetric.good {
+  border-color: rgba(73, 195, 111, 0.42);
+}
+
+.tvMetric.warn {
+  border-color: rgba(241, 201, 75, 0.42);
+}
+
+.tvBody {
+  display: grid;
+  grid-template-columns: minmax(660px, 1.25fr) minmax(460px, 0.9fr) minmax(300px, 0.58fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.tvBody .dailyPanel,
+.tvBody .liveFeed {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tvRankings {
+  padding: 12px;
+}
+
+.tvCommercialRank,
+.tvLegalRank {
+  border: 1px solid #242424;
+  border-radius: 8px;
+  background: #101010;
+  padding: 10px;
+}
+
+.tvCommercialRank {
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: minmax(360px, 1.2fr) minmax(190px, 0.8fr);
+  grid-template-areas:
+    "title title"
+    "podium list";
+  gap: 10px;
+}
+
+.tvCommercialRank h3,
+.tvLegalRank h3 {
+  margin: 0 0 9px;
+  color: var(--soft);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.tvCommercialRank h3 {
+  grid-area: title;
+}
+
+.podium {
+  grid-area: podium;
+  display: grid;
+  grid-template-columns: 0.9fr 1.08fr 0.9fr;
+  align-items: end;
+  gap: 8px;
+  min-height: 186px;
+}
+
+.podiumPlace,
+.legalList article,
+.tvRestList div {
+  border: 1px solid #272727;
+  border-radius: 8px;
+  background: #151515;
+}
+
+.podiumPlace {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-height: 84px;
+  padding: 12px 9px 18px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.podiumPlace::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 16px;
+  background: linear-gradient(90deg, rgba(224, 32, 32, 0.38), rgba(241, 201, 75, 0.34));
+}
+
+.podiumPlace.p1 {
+  order: 2;
+  min-height: 168px;
+  border-color: rgba(241, 201, 75, 0.5);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(241, 201, 75, 0.22), transparent 46%),
+    linear-gradient(180deg, rgba(241, 201, 75, 0.14), #151515);
+}
+
+.podiumPlace.p2 {
+  order: 1;
+  min-height: 132px;
+}
+
+.podiumPlace.p3 {
+  order: 3;
+  min-height: 116px;
+}
+
+.podiumPlace span,
+.legalList span,
+.tvRestList span {
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.podiumPlace span {
+  color: var(--yellow);
+  font-size: 31px;
+  line-height: 1;
+}
+
+.podiumPlace.p1 span {
+  font-size: 48px;
+}
+
+.podiumPlace strong,
+.legalList strong,
+.tvRestList strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: white;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podiumPlace strong {
+  margin-top: 9px;
+  font-size: 15px;
+}
+
+.podiumPlace.p1 strong {
+  font-size: 17px;
+}
+
+.podiumPlace small,
+.legalList small,
+.tvRestList small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tvRestList,
+.legalList {
+  display: grid;
+  gap: 6px;
+}
+
+.tvRestList {
+  grid-area: list;
+  align-content: start;
+}
+
+.tvRestList div,
+.legalList article {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 35px;
+  padding: 7px 8px;
+}
+
+.legalList article.highlight {
+  border-color: rgba(73, 195, 111, 0.4);
+  background: linear-gradient(90deg, rgba(73, 195, 111, 0.12), #151515);
+}
+
+.tvLegalRank {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.tvLegalRank h3 {
+  margin: 0;
+}
+
+.tvLegalRank .legalList {
+  grid-template-columns: 1fr 1fr;
+}
+
+.tvLegalRank .legalList article {
+  min-height: 54px;
+}
+
+.tvFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
+.tvFooter strong {
+  color: #f6df86;
+  font-size: 18px;
+}
+
+.filterTabs {
+  display: flex;
+  gap: 6px;
+}
+
+.filterTabs button {
+  border: 1px solid #303030;
+  border-radius: 6px;
+  background: #111111;
+  color: var(--soft);
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.filterTabs button.active {
+  border-color: #741919;
+  background: var(--red);
+  color: white;
+}
+
+.statusPage {
+  width: min(920px, calc(100% - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  display: grid;
+  align-content: center;
+  gap: 18px;
+}
+
+.statusPage section,
+.statusPage dl {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 22px;
+}
+
+.statusPage h1 {
+  margin: 8px 0;
+  font-size: 42px;
+}
+
+.statusPage p {
+  margin: 0;
+  color: var(--soft);
+}
+
+.statusPage dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.statusPage dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.statusPage dd {
+  margin: 5px 0 0;
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.statusError section {
+  border-color: #673030;
+}
+
 .operationScreen {
   min-height: calc(100vh - 96px);
 }
@@ -597,7 +1060,7 @@ button {
 
 .managementHero {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -616,7 +1079,7 @@ button {
 
 .managementHero h2 {
   margin: 10px 0 8px;
-  font-size: 36px;
+  font-size: 30px;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -867,7 +1330,11 @@ button {
 @media (max-width: 1280px) {
   .topBar,
   .heroGrid,
+  .tvHeader,
+  .tvHero,
+  .tvBody,
   .operationGrid,
+  .pulseGrid,
   .wideGrid,
   .managementHero,
   .managementGrid,
@@ -953,7 +1420,9 @@ button {
   .dailyRow,
   .teamRow,
   .sellerTableRow,
-  .paceRows {
+  .paceRows,
+  .podium,
+  .statusPage dl {
     grid-template-columns: 1fr;
   }
 

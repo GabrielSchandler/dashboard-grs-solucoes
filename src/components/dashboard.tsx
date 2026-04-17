@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type Equipe = "COMERCIAL" | "JURIDICO";
-type View = "operacao" | "gestao" | "marketing";
+type View = "tv" | "operacao" | "gestao" | "marketing";
 
 type Venda = {
   nome: string;
@@ -64,9 +64,13 @@ const compactCurrency = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
-export default function Dashboard() {
+export default function Dashboard({
+  initialView = "operacao",
+}: {
+  initialView?: View;
+}) {
   const [state, setState] = useState<ApiState>({ status: "loading" });
-  const [activeView, setActiveView] = useState<View>("operacao");
+  const [activeView, setActiveView] = useState<View>(initialView);
 
   async function load() {
     try {
@@ -145,6 +149,14 @@ function DashboardReady({
 }) {
   const model = useMemo(() => buildDashboardModel(data), [data]);
 
+  if (activeView === "tv") {
+    return (
+      <main className="dashboardShell tvShell">
+        <TvView model={model} updatedAt={data.updatedAt} source={data.source} />
+      </main>
+    );
+  }
+
   return (
     <main className="dashboardShell">
       <Header
@@ -209,6 +221,29 @@ function OperationView({ model }: { model: DashboardModel }) {
         />
       </section>
 
+      <section className="pulseGrid">
+        <MiniMetric
+          label="Meta base"
+          value={`${model.baseGoalPct.toFixed(1)}%`}
+          detail={`${currency.format(model.total)} de ${currency.format(model.baseGoal)}`}
+        />
+        <MiniMetric
+          label={model.rhythmDelta >= 0 ? "Acima do ritmo" : "Abaixo do ritmo"}
+          value={currency.format(Math.abs(model.rhythmDelta))}
+          detail={`Ideal ate hoje ${currency.format(model.idealRevenueToDate)}`}
+        />
+        <MiniMetric
+          label="Melhor dia"
+          value={model.bestDay ? compactCurrency.format(model.bestDay.total) : "R$ 0"}
+          detail={model.bestDay ? formatDayMonth(model.bestDay.data) : "Sem movimento"}
+        />
+        <MiniMetric
+          label="Ticket medio"
+          value={currency.format(model.averageTicket)}
+          detail={`${model.vendas.length} vendas no mes`}
+        />
+      </section>
+
       <section className="operationGrid">
         <RankingBoard
           title="Ranking comercial"
@@ -227,6 +262,159 @@ function OperationView({ model }: { model: DashboardModel }) {
         <LiveFeed vendas={model.recentSales} />
       </section>
     </div>
+  );
+}
+
+function TvView({
+  model,
+  updatedAt,
+  source,
+}: {
+  model: DashboardModel;
+  updatedAt: string;
+  source: string;
+}) {
+  const clock = useClock();
+  const weather = useWeather();
+
+  return (
+    <div className="tvScreen">
+      <header className="tvHeader">
+        <div>
+          <span className="livePill"><i />Ao vivo</span>
+          <h2>Central de Vendas</h2>
+          <p>Meta base R$ 100 mil / superacao R$ 110 mil</p>
+        </div>
+        <div className="tvTime">
+          <strong>{clock.time}</strong>
+          <span>{clock.date}</span>
+        </div>
+        <div className="tvWeather">
+          <strong>{weather.temp === null ? "--" : `${Math.round(weather.temp)} C`}</strong>
+          <span>{weather.error ?? weather.label}</span>
+        </div>
+      </header>
+
+      <section className="tvHero">
+        <article className="tvTotal">
+          <span>Faturamento total</span>
+          <strong>{currency.format(model.total)}</strong>
+          <div className="tvGoalRail">
+            <i style={{ width: `${model.baseGoalPct}%` }} />
+            <b style={{ width: `${model.goalPct}%` }} />
+          </div>
+          <footer>
+            <span>Base {model.baseGoalPct.toFixed(1)}%</span>
+            <span>Superacao {model.goalPct.toFixed(1)}%</span>
+          </footer>
+        </article>
+        <TvMetric label="Por dia util" value={currency.format(model.requiredPerRemainingWorkday)} detail={`${model.remainingWorkdays} dias restantes`} warn />
+        <TvMetric label="Projecao" value={currency.format(model.projectedRevenue)} detail={model.projectedRevenue >= model.meta ? "Ritmo de festa" : "Abaixo da superacao"} good={model.projectedRevenue >= model.meta} />
+        <TvMetric label="Ritmo hoje" value={currency.format(Math.abs(model.rhythmDelta))} detail={model.rhythmDelta >= 0 ? "Acima do ideal" : "Abaixo do ideal"} good={model.rhythmDelta >= 0} />
+      </section>
+
+      <section className="tvBody">
+        <TvRankingPanel model={model} />
+        <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
+        <LiveFeed vendas={model.recentSales.slice(0, 3)} />
+      </section>
+
+      <footer className="tvFooter">
+        <strong>
+          {model.goalPct >= 100
+            ? "Festa da superacao confirmada"
+            : `Faltam ${currency.format(model.remaining)} para a festa`}
+        </strong>
+        <span>
+          Atualizado {new Date(updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} / {source}
+        </span>
+      </footer>
+    </div>
+  );
+}
+
+function TvRankingPanel({ model }: { model: DashboardModel }) {
+  return (
+    <section className="tvRankings">
+      <div className="sectionHeader">
+        <h2>Ranking mensal</h2>
+        <span>{model.monthLabel}</span>
+      </div>
+      <CommercialPodium ranking={model.rankComercialMonth} />
+      <LegalTvList ranking={model.rankJuridicoMonth} />
+    </section>
+  );
+}
+
+function CommercialPodium({ ranking }: { ranking: Ranking[] }) {
+  const podium = [ranking[1], ranking[0], ranking[2]].filter(Boolean);
+  const rest = ranking.slice(3);
+
+  return (
+    <div className="tvCommercialRank">
+      <h3>Comercial</h3>
+      <div className="podium">
+        {podium.map((seller) => {
+          const position = ranking.findIndex((item) => item.nome === seller.nome) + 1;
+
+          return (
+            <article className={`podiumPlace p${position}`} key={seller.nome}>
+              <span>{position}o</span>
+              <strong>{seller.nome}</strong>
+              <small>{seller.vendas} vendas</small>
+            </article>
+          );
+        })}
+      </div>
+      <div className="tvRestList">
+        {rest.map((seller, index) => (
+          <div key={seller.nome}>
+            <span>{index + 4}o</span>
+            <strong>{seller.nome}</strong>
+            <small>{seller.vendas} vendas</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LegalTvList({ ranking }: { ranking: Ranking[] }) {
+  return (
+    <div className="tvLegalRank">
+      <h3>Juridico</h3>
+      <div className="legalList">
+        {ranking.slice(0, 2).map((seller, index) => (
+          <article className={index < 2 ? "highlight" : ""} key={seller.nome}>
+            <span>{index + 1}o</span>
+            <strong>{seller.nome}</strong>
+            <small>{seller.vendas} vendas</small>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TvMetric({
+  label,
+  value,
+  detail,
+  good,
+  warn,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  good?: boolean;
+  warn?: boolean;
+}) {
+  return (
+    <article className={`tvMetric ${good ? "good" : ""} ${warn ? "warn" : ""}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <p>{detail}</p>
+    </article>
   );
 }
 
@@ -260,6 +448,13 @@ function Header({
       </div>
 
       <nav className="viewNav" aria-label="Telas do dashboard">
+        <button
+          className={activeView === "tv" ? "active" : ""}
+          type="button"
+          onClick={() => onViewChange("tv")}
+        >
+          TV
+        </button>
         <button
           className={activeView === "operacao" ? "active" : ""}
           type="button"
@@ -317,13 +512,19 @@ function Header({
 }
 
 function ManagementView({ model }: { model: DashboardModel }) {
+  const [teamFilter, setTeamFilter] = useState<"TODOS" | Equipe>("TODOS");
+  const filteredSales =
+    teamFilter === "TODOS"
+      ? model.recentSales
+      : model.recentSales.filter((venda) => venda.equipe === teamFilter);
+
   return (
     <div className="managementScreen">
       <section className="managementHero">
         <article>
           <span className="eyebrow">Visao executiva</span>
           <h2>{currency.format(model.total)}</h2>
-          <p>{model.goalPct.toFixed(1)}% da meta mensal em {model.monthLabel}</p>
+          <p>{model.baseGoalPct.toFixed(1)}% da meta base / {model.goalPct.toFixed(1)}% da superacao</p>
         </article>
         <article>
           <span className="eyebrow">Falta para meta</span>
@@ -334,6 +535,11 @@ function ManagementView({ model }: { model: DashboardModel }) {
           <span className="eyebrow">Projecao no ritmo atual</span>
           <h2>{currency.format(model.projectedRevenue)}</h2>
           <p>Media diaria {currency.format(model.averageDailyRevenue)}</p>
+        </article>
+        <article>
+          <span className="eyebrow">Melhor dia</span>
+          <h2>{model.bestDay ? compactCurrency.format(model.bestDay.total) : "R$ 0"}</h2>
+          <p>{model.bestDay ? formatDayMonth(model.bestDay.data) : "Sem movimento"}</p>
         </article>
       </section>
 
@@ -347,7 +553,7 @@ function ManagementView({ model }: { model: DashboardModel }) {
         <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
       </section>
 
-      <SalesTable vendas={model.recentSales} />
+      <SalesTable vendas={filteredSales} filter={teamFilter} onFilterChange={setTeamFilter} />
     </div>
   );
 }
@@ -367,6 +573,14 @@ function PacePanel({ model }: { model: DashboardModel }) {
         <div>
           <span>Necessario por dia</span>
           <strong>{currency.format(model.requiredPerRemainingWorkday)}</strong>
+        </div>
+        <div>
+          <span>Ideal ate hoje</span>
+          <strong>{currency.format(model.idealRevenueToDate)}</strong>
+        </div>
+        <div>
+          <span>{model.rhythmDelta >= 0 ? "Acima do ritmo" : "Abaixo do ritmo"}</span>
+          <strong>{currency.format(Math.abs(model.rhythmDelta))}</strong>
         </div>
         <div>
           <span>Dias uteis</span>
@@ -430,12 +644,31 @@ function SellerTable({ title, ranking }: { title: string; ranking: Ranking[] }) 
   );
 }
 
-function SalesTable({ vendas }: { vendas: Venda[] }) {
+function SalesTable({
+  vendas,
+  filter,
+  onFilterChange,
+}: {
+  vendas: Venda[];
+  filter: "TODOS" | Equipe;
+  onFilterChange: (filter: "TODOS" | Equipe) => void;
+}) {
   return (
     <section className="managementPanel">
       <div className="sectionHeader">
         <h2>Movimento recente</h2>
-        <span>Clientes e valores</span>
+        <div className="filterTabs">
+          {(["TODOS", "COMERCIAL", "JURIDICO"] as const).map((item) => (
+            <button
+              className={filter === item ? "active" : ""}
+              key={item}
+              type="button"
+              onClick={() => onFilterChange(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="remoteTable">
         <table>
@@ -481,6 +714,24 @@ function KpiCard({
       <span className="eyebrow">{label}</span>
       <strong>{value}</strong>
       <p>{detail}</p>
+    </article>
+  );
+}
+
+function MiniMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <article className="miniMetric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
     </article>
   );
 }
@@ -638,6 +889,10 @@ function buildDashboardModel(data: ApiResponse) {
   const workdays = getWorkdayStats(activeMonth.key);
   const averageDailyRevenue = workdays.elapsed > 0 ? total / workdays.elapsed : 0;
   const projectedRevenue = averageDailyRevenue * workdays.total;
+  const baseGoal = 100000;
+  const idealRevenueToDate =
+    workdays.total > 0 ? data.meta * (workdays.elapsed / workdays.total) : 0;
+  const rhythmDelta = total - idealRevenueToDate;
   const requiredPerRemainingWorkday =
     workdays.remaining > 0 ? Math.max(data.meta - total, 0) / workdays.remaining : 0;
   const teamSummary = [
@@ -652,7 +907,9 @@ function buildDashboardModel(data: ApiResponse) {
     total,
     totalComercial,
     totalJuridico,
+    baseGoal,
     meta: data.meta,
+    baseGoalPct: Math.min((total / baseGoal) * 100, 100),
     remaining: Math.max(data.meta - total, 0),
     goalPct,
     averageTicket: monthSales.length > 0 ? total / monthSales.length : 0,
@@ -671,6 +928,8 @@ function buildDashboardModel(data: ApiResponse) {
     remainingWorkdays: workdays.remaining,
     averageDailyRevenue,
     projectedRevenue,
+    idealRevenueToDate,
+    rhythmDelta,
     requiredPerRemainingWorkday,
   };
 }
