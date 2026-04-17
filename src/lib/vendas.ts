@@ -29,7 +29,7 @@ export async function loadVendas(): Promise<VendasResponse> {
 
   return {
     vendas,
-    meta: readNumberEnv("DASHBOARD_META", 100000),
+    meta: readNumberEnv("DASHBOARD_META", 110000),
     refreshSeconds: readNumberEnv("DASHBOARD_REFRESH_SECONDS", 300),
     updatedAt: new Date().toISOString(),
     source,

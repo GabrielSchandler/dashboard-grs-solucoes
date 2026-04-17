@@ -170,7 +170,7 @@ function OperationView({ model }: { model: DashboardModel }) {
           <span className="eyebrow">Faturamento total</span>
           <strong>{currency.format(model.total)}</strong>
           <div className="goalLine">
-            <span>Meta {currency.format(model.meta)}</span>
+            <span>Meta superacao {currency.format(model.meta)}</span>
             <span>{model.goalPct.toFixed(1)}%</span>
           </div>
           <div className="goalTrack" aria-label={`Meta em ${model.goalPct.toFixed(1)}%`}>
@@ -178,8 +178,8 @@ function OperationView({ model }: { model: DashboardModel }) {
           </div>
           <footer>
             {model.remaining > 0
-              ? `Faltam ${currency.format(model.remaining)} para bater a meta`
-              : "Meta atingida"}
+              ? `Faltam ${currency.format(model.remaining)} para a festa da superacao`
+              : "Festa da superacao confirmada"}
           </footer>
         </article>
 
@@ -196,10 +196,16 @@ function OperationView({ model }: { model: DashboardModel }) {
           tone="green"
         />
         <KpiCard
-          label="Ticket medio"
-          value={currency.format(model.averageTicket)}
-          detail={`${model.vendas.length} vendas no periodo`}
+          label="Por dia util"
+          value={currency.format(model.requiredPerRemainingWorkday)}
+          detail={`${model.remainingWorkdays} dias uteis restantes`}
           tone="red"
+        />
+        <KpiCard
+          label="Projecao"
+          value={currency.format(model.projectedRevenue)}
+          detail={`Media diaria ${currency.format(model.averageDailyRevenue)}`}
+          tone={model.projectedRevenue >= model.meta ? "green" : "yellow"}
         />
       </section>
 
@@ -283,7 +289,7 @@ function Header({
           <span>{clock.date}</span>
         </div>
         <div className="weatherBox">
-          <strong>{weather.temp === null ? "--" : `${Math.round(weather.temp)}°C`}</strong>
+          <strong>{weather.temp === null ? "--" : `${Math.round(weather.temp)} C`}</strong>
           <span>{weather.error ?? weather.label}</span>
         </div>
       </div>
@@ -322,25 +328,59 @@ function ManagementView({ model }: { model: DashboardModel }) {
         <article>
           <span className="eyebrow">Falta para meta</span>
           <h2>{currency.format(model.remaining)}</h2>
-          <p>{model.vendas.length} vendas registradas no mes</p>
+          <p>{currency.format(model.requiredPerRemainingWorkday)} por dia util restante</p>
         </article>
         <article>
-          <span className="eyebrow">Melhor dia</span>
-          <h2>{model.bestDay ? compactCurrency.format(model.bestDay.total) : "R$ 0"}</h2>
-          <p>{model.bestDay ? formatDayMonth(model.bestDay.data) : "Sem movimento"}</p>
+          <span className="eyebrow">Projecao no ritmo atual</span>
+          <h2>{currency.format(model.projectedRevenue)}</h2>
+          <p>Media diaria {currency.format(model.averageDailyRevenue)}</p>
         </article>
       </section>
 
       <section className="managementGrid">
-        <TeamComparison teams={model.teamSummary} />
+        <PacePanel model={model} />
         <SellerTable title="Top vendedores no mes" ranking={model.overallRanking} />
       </section>
 
       <section className="managementGrid managementGridWide">
+        <TeamComparison teams={model.teamSummary} />
         <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
-        <SalesTable vendas={model.recentSales} />
       </section>
+
+      <SalesTable vendas={model.recentSales} />
     </div>
+  );
+}
+
+function PacePanel({ model }: { model: DashboardModel }) {
+  return (
+    <section className="managementPanel partyPanel">
+      <div className="sectionHeader">
+        <h2>Ritmo da meta</h2>
+        <span>Segunda a sexta</span>
+      </div>
+      <div className="paceRows">
+        <div>
+          <span>Media por dia util</span>
+          <strong>{currency.format(model.averageDailyRevenue)}</strong>
+        </div>
+        <div>
+          <span>Necessario por dia</span>
+          <strong>{currency.format(model.requiredPerRemainingWorkday)}</strong>
+        </div>
+        <div>
+          <span>Dias uteis</span>
+          <strong>
+            {model.elapsedWorkdays}/{model.totalWorkdays}
+          </strong>
+        </div>
+      </div>
+      <p className={model.goalPct >= 100 ? "partyMessage on" : "partyMessage"}>
+        {model.goalPct >= 100
+          ? "Meta de R$ 110 mil batida. Festa liberada."
+          : `Faltam ${currency.format(model.remaining)} para liberar a festa.`}
+      </p>
+    </section>
   );
 }
 
@@ -434,7 +474,7 @@ function KpiCard({
   label: string;
   value: string;
   detail: string;
-  tone: "blue" | "green" | "red";
+  tone: "blue" | "green" | "red" | "yellow";
 }) {
   return (
     <article className={`kpiCard ${tone}`}>
@@ -595,6 +635,11 @@ function buildDashboardModel(data: ApiResponse) {
   const days = groupByDate(monthSales);
   const bestDay = days.length > 0 ? [...days].sort((a, b) => b.total - a.total)[0] : null;
   const overallRanking = rankBySeller(monthSales);
+  const workdays = getWorkdayStats(activeMonth.key);
+  const averageDailyRevenue = workdays.elapsed > 0 ? total / workdays.elapsed : 0;
+  const projectedRevenue = averageDailyRevenue * workdays.total;
+  const requiredPerRemainingWorkday =
+    workdays.remaining > 0 ? Math.max(data.meta - total, 0) / workdays.remaining : 0;
   const teamSummary = [
     makeTeamSummary("Comercial", totalComercial, comercial.length, total),
     makeTeamSummary("Juridico", totalJuridico, juridico.length, total),
@@ -621,6 +666,12 @@ function buildDashboardModel(data: ApiResponse) {
     bestDay,
     overallRanking,
     teamSummary,
+    totalWorkdays: workdays.total,
+    elapsedWorkdays: workdays.elapsed,
+    remainingWorkdays: workdays.remaining,
+    averageDailyRevenue,
+    projectedRevenue,
+    requiredPerRemainingWorkday,
   };
 }
 
@@ -720,6 +771,52 @@ function getActiveMonth(vendas: Venda[]) {
   });
 
   return { key, label };
+}
+
+function getWorkdayStats(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const today = new Date();
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  const isCurrentMonth =
+    today.getFullYear() === year && today.getMonth() === month - 1;
+  const elapsedEnd = isCurrentMonth ? minDate(today, monthEnd) : monthEnd;
+  const remainingStart = isCurrentMonth ? maxDate(today, monthStart) : monthStart;
+
+  return {
+    total: countWeekdays(monthStart, monthEnd),
+    elapsed: countWeekdays(monthStart, elapsedEnd),
+    remaining: isCurrentMonth ? countWeekdays(remainingStart, monthEnd) : 0,
+  };
+}
+
+function countWeekdays(start: Date, end: Date) {
+  if (start > end) {
+    return 0;
+  }
+
+  let count = 0;
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    const day = cursor.getDay();
+
+    if (day >= 1 && day <= 5) {
+      count += 1;
+    }
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return count;
+}
+
+function minDate(a: Date, b: Date) {
+  return a < b ? a : b;
+}
+
+function maxDate(a: Date, b: Date) {
+  return a > b ? a : b;
 }
 
 function sum(vendas: Venda[]) {
