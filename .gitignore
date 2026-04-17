@@ -6,5 +6,7 @@ out
 dist
 *.log
 *.tsbuildinfo
+local-server-job.txt
+run-local.cmd
 BASE DE VENDAS.xlsx
 *.local.xlsx
