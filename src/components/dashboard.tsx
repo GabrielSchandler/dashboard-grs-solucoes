@@ -334,16 +334,32 @@ function TvView({
 }
 
 function TvRankingPanel({ model }: { model: DashboardModel }) {
+  const comercialRanking = excludeFromTvRanking(model.rankComercialMonth, ["SILAS", "SILLAS"]);
+  const juridicoRanking = excludeFromTvRanking(model.rankJuridicoMonth, ["SILAS", "SILLAS"]);
+
   return (
     <section className="tvRankings">
       <div className="sectionHeader">
         <h2>Ranking mensal</h2>
         <span>{model.monthLabel}</span>
       </div>
-      <CommercialPodium ranking={model.rankComercialMonth} />
-      <LegalTvList ranking={model.rankJuridicoMonth} />
+      <CommercialPodium ranking={comercialRanking} />
+      <LegalTvList ranking={juridicoRanking} />
     </section>
   );
+}
+
+function excludeFromTvRanking(ranking: Ranking[], hiddenNames: string[]) {
+  const hidden = new Set(hiddenNames.map(normalizeName));
+  return ranking.filter((seller) => !hidden.has(normalizeName(seller.nome)));
+}
+
+function normalizeName(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
 }
 
 function CommercialPodium({ ranking }: { ranking: Ranking[] }) {
