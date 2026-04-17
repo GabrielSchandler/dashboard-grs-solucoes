@@ -46,15 +46,15 @@ button {
   width: min(1840px, calc(100% - 36px));
   min-height: 100vh;
   margin: 0 auto;
-  padding: 18px 0 30px;
+  padding: 12px 0 24px;
 }
 
 .topBar {
   display: grid;
-  grid-template-columns: minmax(420px, 1fr) auto minmax(210px, auto);
+  grid-template-columns: minmax(360px, 1fr) auto auto minmax(172px, auto);
   align-items: center;
-  gap: 20px;
-  padding: 14px 0 18px;
+  gap: 14px;
+  padding: 10px 0 12px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -66,8 +66,8 @@ button {
 }
 
 .brandMark {
-  width: 60px;
-  height: 60px;
+  width: 54px;
+  height: 54px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -96,7 +96,7 @@ button {
 
 .topBar h1 {
   margin: 0;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -104,7 +104,7 @@ button {
 .topBar p {
   margin: 4px 0 0;
   color: var(--soft);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.35;
 }
 
@@ -123,7 +123,7 @@ button {
   border-radius: 6px;
   background: transparent;
   color: var(--soft);
-  padding: 9px 14px;
+  padding: 8px 12px;
   transition:
     background 180ms ease,
     color 180ms ease,
@@ -149,6 +149,39 @@ button {
   color: var(--muted);
   font-size: 12px;
   text-align: right;
+}
+
+.opsInfo {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 8px;
+}
+
+.clockBox,
+.weatherBox {
+  min-width: 118px;
+  border: 1px solid #282828;
+  border-radius: 8px;
+  background: #101010;
+  padding: 9px 12px;
+}
+
+.clockBox strong,
+.weatherBox strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.clockBox span,
+.weatherBox span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .livePill {
@@ -183,9 +216,9 @@ button {
 
 .heroGrid {
   display: grid;
-  grid-template-columns: minmax(420px, 1.35fr) repeat(3, minmax(220px, 0.55fr));
-  gap: 14px;
-  margin: 18px 0 14px;
+  grid-template-columns: minmax(400px, 1.45fr) repeat(3, minmax(190px, 0.55fr));
+  gap: 12px;
+  margin: 12px 0;
 }
 
 .heroCard,
@@ -202,8 +235,8 @@ button {
 }
 
 .heroCard {
-  min-height: 238px;
-  padding: 24px;
+  min-height: 184px;
+  padding: 20px;
 }
 
 .heroCardMain {
@@ -239,7 +272,7 @@ button {
   z-index: 1;
   display: block;
   margin-top: 12px;
-  font-size: 64px;
+  font-size: 52px;
   line-height: 1;
   letter-spacing: 0;
   overflow-wrap: anywhere;
@@ -252,7 +285,7 @@ button {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 20px;
+  margin-top: 14px;
   color: var(--soft);
   font-size: 15px;
 }
@@ -281,15 +314,15 @@ button {
 }
 
 .kpiCard {
-  min-height: 238px;
-  padding: 22px;
+  min-height: 184px;
+  padding: 18px;
   display: grid;
   align-content: space-between;
 }
 
 .kpiCard strong {
   display: block;
-  font-size: 34px;
+  font-size: 28px;
   line-height: 1.1;
   letter-spacing: 0;
   overflow-wrap: anywhere;
@@ -316,14 +349,14 @@ button {
 .operationGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .wideGrid {
   display: grid;
   grid-template-columns: minmax(520px, 1.4fr) minmax(380px, 0.8fr);
-  gap: 14px;
+  gap: 12px;
 }
 
 .rankingBoard,
@@ -331,7 +364,7 @@ button {
 .liveFeed,
 .futureView,
 .statePanel {
-  padding: 18px;
+  padding: 14px;
 }
 
 .sectionHeader {
@@ -339,12 +372,12 @@ button {
   align-items: baseline;
   justify-content: space-between;
   gap: 14px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .sectionHeader h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -359,7 +392,7 @@ button {
 .rankingColumns {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 .rankingList {
@@ -367,7 +400,7 @@ button {
   border: 1px solid #242424;
   border-radius: 8px;
   background: #101010;
-  padding: 12px;
+  padding: 10px;
 }
 
 .rankingList h3 {
@@ -383,7 +416,7 @@ button {
   grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  min-height: 54px;
+  min-height: 44px;
   border-bottom: 1px solid #202020;
 }
 
@@ -411,14 +444,14 @@ button {
 .seller {
   position: relative;
   min-width: 0;
-  padding: 9px 0 11px;
+  padding: 7px 0 9px;
 }
 
 .seller strong {
   display: block;
   overflow: hidden;
   color: white;
-  font-size: 15px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -449,7 +482,7 @@ button {
 .dailyRows,
 .feedList {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .dailyRow {
@@ -457,7 +490,7 @@ button {
   grid-template-columns: 58px minmax(0, 1fr) 112px 188px;
   align-items: center;
   gap: 12px;
-  min-height: 34px;
+  min-height: 30px;
 }
 
 .dailyRow > span {
@@ -492,23 +525,23 @@ button {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  min-height: 70px;
+  min-height: 56px;
   border: 1px solid #242424;
   border-radius: 8px;
   background: #101010;
-  padding: 12px;
+  padding: 9px 10px;
   animation: slideIn 360ms ease both;
 }
 
 .feedItem strong {
   display: block;
   color: white;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .feedItem p {
   max-width: 460px;
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   overflow: hidden;
   color: var(--soft);
   font-size: 12px;
@@ -547,6 +580,184 @@ button {
   align-content: center;
   justify-items: center;
   text-align: center;
+}
+
+.operationScreen {
+  min-height: calc(100vh - 96px);
+}
+
+.managementScreen {
+  padding-top: 14px;
+}
+
+.managementHero {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.managementHero article,
+.managementPanel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+}
+
+.managementHero article {
+  padding: 20px;
+}
+
+.managementHero h2 {
+  margin: 10px 0 8px;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.managementHero p {
+  margin: 0;
+  color: var(--soft);
+}
+
+.managementGrid {
+  display: grid;
+  grid-template-columns: minmax(380px, 0.82fr) minmax(520px, 1.18fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.managementGridWide {
+  grid-template-columns: minmax(520px, 1fr) minmax(520px, 1fr);
+}
+
+.managementPanel {
+  padding: 14px;
+}
+
+.teamRows,
+.sellerTable {
+  display: grid;
+  gap: 10px;
+}
+
+.teamRow {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #232323;
+  padding: 0 0 12px;
+}
+
+.teamRow:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.teamRow strong,
+.sellerTableRow strong {
+  display: block;
+  color: white;
+}
+
+.teamRow small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.teamTrack {
+  height: 12px;
+  border-radius: 999px;
+  background: #252525;
+  overflow: hidden;
+}
+
+.teamTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--red), var(--yellow));
+}
+
+.teamRow span {
+  color: white;
+  font-weight: 700;
+  text-align: right;
+}
+
+.sellerTableRow {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 90px 132px;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #232323;
+  padding-bottom: 10px;
+}
+
+.sellerTableRow:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.sellerTableRow span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #262626;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sellerTableRow small {
+  color: var(--muted);
+}
+
+.sellerTableRow em {
+  color: white;
+  font-style: normal;
+  font-weight: 700;
+  text-align: right;
+}
+
+.remoteTable {
+  overflow-x: auto;
+}
+
+.remoteTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.remoteTable th,
+.remoteTable td {
+  border-bottom: 1px solid #242424;
+  padding: 9px 8px;
+  color: #dfdfdf;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.remoteTable th {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.remoteTable td:nth-child(4) {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.remoteTable td:last-child,
+.remoteTable th:last-child {
+  text-align: right;
 }
 
 .futureView h2,
@@ -602,7 +813,10 @@ button {
   .topBar,
   .heroGrid,
   .operationGrid,
-  .wideGrid {
+  .wideGrid,
+  .managementHero,
+  .managementGrid,
+  .managementGridWide {
     grid-template-columns: 1fr;
   }
 
@@ -616,6 +830,46 @@ button {
   }
 }
 
+@media (min-width: 1400px) and (max-height: 980px) {
+  .dashboardShell {
+    width: min(1840px, calc(100% - 28px));
+    padding-top: 8px;
+  }
+
+  .topBar {
+    padding: 8px 0 10px;
+  }
+
+  .heroCard,
+  .kpiCard {
+    min-height: 162px;
+  }
+
+  .heroCard strong {
+    font-size: 46px;
+  }
+
+  .kpiCard strong {
+    font-size: 25px;
+  }
+
+  .rankItem {
+    min-height: 39px;
+  }
+
+  .rankingList h3 {
+    margin-bottom: 6px;
+  }
+
+  .feedItem:nth-child(n + 7) {
+    display: none;
+  }
+
+  .dailyRow {
+    min-height: 26px;
+  }
+}
+
 @media (max-width: 760px) {
   .dashboardShell {
     width: min(100% - 20px, 1840px);
@@ -626,7 +880,8 @@ button {
   .viewNav,
   .goalLine,
   .heroCard footer,
-  .sectionHeader {
+  .sectionHeader,
+  .opsInfo {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -640,7 +895,9 @@ button {
   }
 
   .rankingColumns,
-  .dailyRow {
+  .dailyRow,
+  .teamRow,
+  .sellerTableRow {
     grid-template-columns: 1fr;
   }
 

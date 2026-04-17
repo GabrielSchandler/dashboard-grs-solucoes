@@ -39,6 +39,20 @@ type DayRevenue = {
   juridico: number;
 };
 
+type WeatherState = {
+  temp: number | null;
+  label: string;
+  error?: string;
+};
+
+type TeamSummary = {
+  label: string;
+  total: number;
+  vendas: number;
+  ticket: number;
+  pct: number;
+};
+
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -142,7 +156,7 @@ function DashboardReady({
       />
 
       {activeView === "operacao" ? <OperationView model={model} /> : null}
-      {activeView === "gestao" ? <FutureView title="Gestao" /> : null}
+      {activeView === "gestao" ? <ManagementView model={model} /> : null}
       {activeView === "marketing" ? <FutureView title="Marketing" /> : null}
     </main>
   );
@@ -150,7 +164,7 @@ function DashboardReady({
 
 function OperationView({ model }: { model: DashboardModel }) {
   return (
-    <>
+    <div className="operationScreen">
       <section className="heroGrid" aria-label="Indicadores principais">
         <article className="heroCard heroCardMain">
           <span className="eyebrow">Faturamento total</span>
@@ -206,7 +220,7 @@ function OperationView({ model }: { model: DashboardModel }) {
         <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
         <LiveFeed vendas={model.recentSales} />
       </section>
-    </>
+    </div>
   );
 }
 
@@ -223,6 +237,9 @@ function Header({
   onRefresh?: () => void;
   onViewChange: (view: View) => void;
 }) {
+  const clock = useClock();
+  const weather = useWeather();
+
   return (
     <header className="topBar">
       <div className="brandBlock">
@@ -260,11 +277,19 @@ function Header({
         </button>
       </nav>
 
+      <div className="opsInfo">
+        <div className="clockBox">
+          <strong>{clock.time}</strong>
+          <span>{clock.date}</span>
+        </div>
+        <div className="weatherBox">
+          <strong>{weather.temp === null ? "--" : `${Math.round(weather.temp)}°C`}</strong>
+          <span>{weather.error ?? weather.label}</span>
+        </div>
+      </div>
+
       <div className="statusBlock">
-        <span className="livePill">
-          <i />
-          Ao vivo
-        </span>
+        <span className="livePill"><i />Ao vivo</span>
         {updatedAt ? (
           <small>
             Atualizado {new Date(updatedAt).toLocaleTimeString("pt-BR", {
@@ -282,6 +307,121 @@ function Header({
         ) : null}
       </div>
     </header>
+  );
+}
+
+function ManagementView({ model }: { model: DashboardModel }) {
+  return (
+    <div className="managementScreen">
+      <section className="managementHero">
+        <article>
+          <span className="eyebrow">Visao executiva</span>
+          <h2>{currency.format(model.total)}</h2>
+          <p>{model.goalPct.toFixed(1)}% da meta mensal em {model.monthLabel}</p>
+        </article>
+        <article>
+          <span className="eyebrow">Falta para meta</span>
+          <h2>{currency.format(model.remaining)}</h2>
+          <p>{model.vendas.length} vendas registradas no mes</p>
+        </article>
+        <article>
+          <span className="eyebrow">Melhor dia</span>
+          <h2>{model.bestDay ? compactCurrency.format(model.bestDay.total) : "R$ 0"}</h2>
+          <p>{model.bestDay ? formatDayMonth(model.bestDay.data) : "Sem movimento"}</p>
+        </article>
+      </section>
+
+      <section className="managementGrid">
+        <TeamComparison teams={model.teamSummary} />
+        <SellerTable title="Top vendedores no mes" ranking={model.overallRanking} />
+      </section>
+
+      <section className="managementGrid managementGridWide">
+        <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
+        <SalesTable vendas={model.recentSales} />
+      </section>
+    </div>
+  );
+}
+
+function TeamComparison({ teams }: { teams: TeamSummary[] }) {
+  return (
+    <section className="managementPanel">
+      <div className="sectionHeader">
+        <h2>Comercial x Juridico</h2>
+        <span>Participacao na receita</span>
+      </div>
+      <div className="teamRows">
+        {teams.map((team) => (
+          <div className="teamRow" key={team.label}>
+            <div>
+              <strong>{team.label}</strong>
+              <small>{team.vendas} vendas / ticket {currency.format(team.ticket)}</small>
+            </div>
+            <div className="teamTrack">
+              <i style={{ width: `${Math.max(team.pct, 4)}%` }} />
+            </div>
+            <span>{currency.format(team.total)}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SellerTable({ title, ranking }: { title: string; ranking: Ranking[] }) {
+  return (
+    <section className="managementPanel">
+      <div className="sectionHeader">
+        <h2>{title}</h2>
+        <span>Geral</span>
+      </div>
+      <div className="sellerTable">
+        {ranking.slice(0, 8).map((seller, index) => (
+          <div className="sellerTableRow" key={seller.nome}>
+            <span>{index + 1}</span>
+            <strong>{seller.nome}</strong>
+            <small>{seller.vendas} vendas</small>
+            <em>{currency.format(seller.total)}</em>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SalesTable({ vendas }: { vendas: Venda[] }) {
+  return (
+    <section className="managementPanel">
+      <div className="sectionHeader">
+        <h2>Movimento recente</h2>
+        <span>Clientes e valores</span>
+      </div>
+      <div className="remoteTable">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Equipe</th>
+              <th>Vendedor</th>
+              <th>Cliente</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {vendas.slice(0, 14).map((venda) => (
+              <tr key={`${venda.data}-${venda.equipe}-${venda.nome}-${venda.cliente}`}>
+                <td>{formatDayMonth(venda.data)}</td>
+                <td>{venda.equipe}</td>
+                <td>{venda.nome}</td>
+                <td>{venda.cliente}</td>
+                <td>{currency.format(venda.meta)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -452,6 +592,13 @@ function buildDashboardModel(data: ApiResponse) {
   const weekSales = monthSales.filter((venda) => venda.data >= week.start && venda.data <= week.end);
   const weekComercial = weekSales.filter((venda) => venda.equipe === "COMERCIAL");
   const weekJuridico = weekSales.filter((venda) => venda.equipe === "JURIDICO");
+  const days = groupByDate(monthSales);
+  const bestDay = days.length > 0 ? [...days].sort((a, b) => b.total - a.total)[0] : null;
+  const overallRanking = rankBySeller(monthSales);
+  const teamSummary = [
+    makeTeamSummary("Comercial", totalComercial, comercial.length, total),
+    makeTeamSummary("Juridico", totalJuridico, juridico.length, total),
+  ];
 
   return {
     vendas: monthSales,
@@ -468,10 +615,94 @@ function buildDashboardModel(data: ApiResponse) {
     rankJuridicoMonth: rankBySeller(juridico),
     rankComercialWeek: rankBySeller(weekComercial),
     rankJuridicoWeek: rankBySeller(weekJuridico),
-    days: groupByDate(monthSales),
+    days,
     recentSales: [...monthSales].sort((a, b) => b.data.localeCompare(a.data)),
     monthLabel: activeMonth.label,
+    bestDay,
+    overallRanking,
+    teamSummary,
   };
+}
+
+function makeTeamSummary(
+  label: string,
+  total: number,
+  vendas: number,
+  grandTotal: number,
+): TeamSummary {
+  return {
+    label,
+    total,
+    vendas,
+    ticket: vendas > 0 ? total / vendas : 0,
+    pct: grandTotal > 0 ? (total / grandTotal) * 100 : 0,
+  };
+}
+
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return {
+    time: now.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    date: now.toLocaleDateString("pt-BR", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    }),
+  };
+}
+
+function useWeather(): WeatherState {
+  const [weather, setWeather] = useState<WeatherState>({
+    temp: null,
+    label: "Temperatura",
+  });
+
+  useEffect(() => {
+    const latitude = process.env.NEXT_PUBLIC_WEATHER_LAT ?? "-23.5505";
+    const longitude = process.env.NEXT_PUBLIC_WEATHER_LON ?? "-46.6333";
+    const label = process.env.NEXT_PUBLIC_WEATHER_LABEL ?? "Sao Paulo";
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`;
+
+    async function loadWeather() {
+      try {
+        const response = await fetch(url, { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error("Clima indisponivel");
+        }
+
+        const payload = (await response.json()) as {
+          current?: { temperature_2m?: number };
+        };
+
+        setWeather({
+          temp: payload.current?.temperature_2m ?? null,
+          label,
+        });
+      } catch {
+        setWeather({
+          temp: null,
+          label,
+          error: "Clima offline",
+        });
+      }
+    }
+
+    void loadWeather();
+    const timer = window.setInterval(() => void loadWeather(), 10 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return weather;
 }
 
 function getActiveMonth(vendas: Venda[]) {
