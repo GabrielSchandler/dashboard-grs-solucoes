@@ -635,7 +635,7 @@ button {
 .marketingHeader,
 .marketingGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, auto);
   align-items: center;
   gap: 12px;
 }
@@ -649,7 +649,7 @@ button {
 
 .marketingHeader h2 {
   margin: 7px 0 4px;
-  font-size: 30px;
+  font-size: 34px;
   line-height: 1;
 }
 
@@ -657,6 +657,52 @@ button {
   margin: 0;
   color: var(--soft);
   font-size: 13px;
+}
+
+.marketingControls {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.dateFilters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dateFilters label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.dateFilters input,
+.dateFilters button {
+  min-height: 34px;
+  border: 1px solid #303030;
+  border-radius: 6px;
+  background: #0c0c0c;
+  color: var(--text);
+  padding: 7px 10px;
+}
+
+.dateFilters button {
+  align-self: end;
+  color: var(--soft);
+  font-size: 13px;
+  transition:
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.dateFilters button:hover {
+  border-color: #484848;
+  color: white;
 }
 
 .marketingTabs {

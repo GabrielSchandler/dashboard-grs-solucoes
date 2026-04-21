@@ -910,10 +910,25 @@ function MarketingView({
   source: string;
 }) {
   const [sourceFilter, setSourceFilter] = useState<MarketingSource>("todos");
+  const [monthFilter, setMonthFilter] = useState(() => getCurrentMonthKey());
+  const [dayFilter, setDayFilter] = useState("");
+  const dateFilteredLeads = leads.filter((lead) => {
+    const leadDay = getDateKey(lead.dataRecebimento);
+
+    if (!leadDay) {
+      return false;
+    }
+
+    if (dayFilter) {
+      return leadDay === dayFilter;
+    }
+
+    return leadDay.startsWith(monthFilter);
+  });
   const filteredLeads =
     sourceFilter === "todos"
-      ? leads
-      : leads.filter((lead) => getLeadSource(lead) === sourceFilter);
+      ? dateFilteredLeads
+      : dateFilteredLeads.filter((lead) => getLeadSource(lead) === sourceFilter);
   const todayLeads = filteredLeads.filter((lead) => isToday(lead.dataRecebimento)).length;
   const activeFinancing = filteredLeads.filter(
     (lead) => lead.possuiFinanciamentoAtivo === true,
@@ -924,9 +939,9 @@ function MarketingView({
         filteredLeads.length
       : 0;
   const sourceCounts = {
-    todos: leads.length,
-    soul: leads.filter((lead) => getLeadSource(lead) === "soul").length,
-    growper: leads.filter((lead) => getLeadSource(lead) === "growper").length,
+    todos: dateFilteredLeads.length,
+    soul: dateFilteredLeads.filter((lead) => getLeadSource(lead) === "soul").length,
+    growper: dateFilteredLeads.filter((lead) => getLeadSource(lead) === "growper").length,
   };
 
   return (
@@ -934,21 +949,55 @@ function MarketingView({
       <section className="marketingHeader">
         <div>
           <span className="eyebrow">Marketing</span>
-          <h2>Leads consolidado</h2>
+          <h2>Marketing</h2>
           <p>{source}</p>
         </div>
-        <div className="filterTabs marketingTabs">
-          {marketingSourceOptions.map((item) => (
-            <button
-              className={sourceFilter === item.value ? "active" : ""}
-              key={item.value}
-              type="button"
-              onClick={() => setSourceFilter(item.value)}
-            >
-              {item.label}
-              <span>{sourceCounts[item.value]}</span>
+        <div className="marketingControls">
+          <div className="dateFilters" aria-label="Filtros de data">
+            <label>
+              Mes
+              <input
+                type="month"
+                value={monthFilter}
+                onChange={(event) => {
+                  setMonthFilter(event.target.value || getCurrentMonthKey());
+                  setDayFilter("");
+                }}
+              />
+            </label>
+            <label>
+              Dia
+              <input
+                type="date"
+                value={dayFilter}
+                onChange={(event) => setDayFilter(event.target.value)}
+              />
+            </label>
+            <button type="button" onClick={() => setDayFilter(getRelativeDateKey(0))}>
+              Hoje
             </button>
-          ))}
+            <button type="button" onClick={() => setDayFilter(getRelativeDateKey(-1))}>
+              Ontem
+            </button>
+            {dayFilter ? (
+              <button type="button" onClick={() => setDayFilter("")}>
+                Ver mes
+              </button>
+            ) : null}
+          </div>
+          <div className="filterTabs marketingTabs">
+            {marketingSourceOptions.map((item) => (
+              <button
+                className={sourceFilter === item.value ? "active" : ""}
+                key={item.value}
+                type="button"
+                onClick={() => setSourceFilter(item.value)}
+              >
+                {item.label}
+                <span>{sourceCounts[item.value]}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -981,7 +1030,7 @@ function MarketingView({
 
       <section className="marketingGrid">
         <LeadTable leads={filteredLeads} />
-        <LeadSourcePanel counts={sourceCounts} total={leads.length} />
+        <LeadSourcePanel counts={sourceCounts} total={dateFilteredLeads.length} />
       </section>
     </div>
   );
@@ -1114,6 +1163,35 @@ function formatDateTimeShort(value: string) {
     day: "2-digit",
     month: "2-digit",
   });
+}
+
+function getCurrentMonthKey() {
+  return getRelativeDateKey(0).slice(0, 7);
+}
+
+function getRelativeDateKey(offsetDays: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getDateKey(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 function FutureView({ title }: { title: string }) {
