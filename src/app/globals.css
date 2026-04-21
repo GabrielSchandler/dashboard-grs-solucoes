@@ -741,6 +741,12 @@ button {
   gap: 12px;
 }
 
+.marketingFinanceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .marketingGrid {
   grid-template-columns: minmax(620px, 1.35fr) minmax(320px, 0.65fr);
   align-items: start;
@@ -791,6 +797,28 @@ button {
   color: white;
   font-weight: 700;
   text-align: right;
+}
+
+.marketingGlossary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #101010;
+  padding: 12px 14px;
+  color: var(--soft);
+  font-size: 12px;
+}
+
+.marketingGlossary strong {
+  color: white;
+  text-transform: uppercase;
+}
+
+.marketingGlossary span {
+  color: var(--soft);
 }
 
 .tvScreen {
@@ -1507,7 +1535,8 @@ button {
   .marketingGrid,
   .marketingGridWide,
   .marketingKpis,
-  .marketingInsightGrid {
+  .marketingInsightGrid,
+  .marketingFinanceGrid {
     grid-template-columns: 1fr;
   }
 

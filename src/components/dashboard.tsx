@@ -29,6 +29,15 @@ type LeadMarketing = {
   origem: string;
   dataFormulario: string;
   horarioFormulario: string;
+  statusAcionamento: string;
+  dataAcionamento: string;
+  responsavelAcionamento: string;
+  statusLead: string;
+  motivoPerda: string;
+  investimentoAgencia: number | null;
+  vendeu: boolean | null;
+  dataVenda: string;
+  valorVenda: number | null;
 };
 
 type ApiResponse = {
@@ -89,6 +98,8 @@ const marketingSourceOptions: Array<{ value: MarketingSource; label: string }> =
   { value: "soul", label: "Soul" },
   { value: "growper", label: "Growper" },
 ];
+
+const waitingForData = "Aguardando dados";
 
 export default function Dashboard({
   initialView = "operacao",
@@ -952,6 +963,8 @@ function MarketingView({
     buildLeadSourceInsight(item.value, dateFilteredLeads),
   );
   const bestSource = [...sourceInsights].sort((a, b) => b.total - a.total)[0] ?? null;
+  const financials = buildMarketingFinancials(filteredLeads);
+  const actionSummary = buildLeadActionSummary(filteredLeads);
   const sourceCounts = {
     todos: dateFilteredLeads.length,
     soul: dateFilteredLeads.filter((lead) => getLeadSource(lead) === "soul").length,
@@ -1063,6 +1076,57 @@ function MarketingView({
         />
       </section>
 
+      <section className="marketingFinanceGrid">
+        <KpiCard
+          label="Investimento"
+          value={formatOptionalCurrency(financials.investment, financials.hasInvestment)}
+          detail="Total informado por agência"
+          tone="blue"
+        />
+        <KpiCard
+          label="Receita"
+          value={formatOptionalCurrency(financials.revenue, financials.hasRevenue)}
+          detail="Retorno de vendas fechadas"
+          tone="green"
+        />
+        <KpiCard
+          label="ROI"
+          value={formatOptionalPercent(financials.roi, financials.hasRoi)}
+          detail="Retorno sobre investimento"
+          tone="yellow"
+        />
+        <KpiCard
+          label="CPL"
+          value={formatOptionalCurrency(financials.cpl, financials.hasInvestment)}
+          detail="Custo por lead"
+          tone="red"
+        />
+        <KpiCard
+          label="CPA"
+          value={formatOptionalCurrency(financials.cpa, financials.hasCpa)}
+          detail="Custo por aquisição"
+          tone="blue"
+        />
+        <KpiCard
+          label="Conversão"
+          value={formatOptionalPercent(financials.conversionRate, financials.hasConversion)}
+          detail="Leads vendidos sobre recebidos"
+          tone="green"
+        />
+        <KpiCard
+          label="Acionados"
+          value={actionSummary.hasActionData ? String(actionSummary.actioned) : waitingForData}
+          detail="Leads já trabalhados"
+          tone="yellow"
+        />
+        <KpiCard
+          label="Não acionados"
+          value={actionSummary.hasActionData ? String(actionSummary.notActioned) : waitingForData}
+          detail="Pendência operacional"
+          tone="red"
+        />
+      </section>
+
       <section className="marketingGrid">
         <LeadTable leads={filteredLeads} />
         <LeadSourcePanel insights={sourceInsights} total={dateFilteredLeads.length} />
@@ -1072,6 +1136,8 @@ function MarketingView({
         <LeadDailyPanel rows={dailyRows} />
         <LeadQualityPanel leads={filteredLeads} />
       </section>
+
+      <MarketingGlossary />
     </div>
   );
 }
@@ -1195,7 +1261,7 @@ function LeadDailyPanel({ rows }: { rows: LeadDailyRow[] }) {
             </div>
           ))
         ) : (
-          <p className="empty">Sem leads no periodo selecionado.</p>
+          <p className="empty">Sem leads no período selecionado.</p>
         )}
       </div>
     </section>
@@ -1243,6 +1309,18 @@ function LeadQualityPanel({ leads }: { leads: LeadMarketing[] }) {
   );
 }
 
+function MarketingGlossary() {
+  return (
+    <section className="marketingGlossary" aria-label="Legenda de siglas">
+      <strong>Legenda</strong>
+      <span>CPL: custo por lead</span>
+      <span>CPA: custo por aquisição</span>
+      <span>ROI: retorno sobre investimento</span>
+      <span>Conversão: percentual de leads que viraram venda</span>
+    </section>
+  );
+}
+
 function getLeadSource(lead: LeadMarketing): MarketingSource {
   const source = normalizeText(lead.origem);
 
@@ -1255,6 +1333,71 @@ function getLeadSource(lead: LeadMarketing): MarketingSource {
   }
 
   return "todos";
+}
+
+function buildMarketingFinancials(leads: LeadMarketing[]) {
+  const investmentValues = leads
+    .map((lead) => lead.investimentoAgencia)
+    .filter((value): value is number => typeof value === "number" && value > 0);
+  const revenueValues = leads
+    .map((lead) => lead.valorVenda)
+    .filter((value): value is number => typeof value === "number" && value > 0);
+  const convertedLeads = leads.filter((lead) => lead.vendeu === true).length;
+  const investment = investmentValues.reduce((total, value) => total + value, 0);
+  const revenue = revenueValues.reduce((total, value) => total + value, 0);
+  const hasInvestment = investmentValues.length > 0;
+  const hasRevenue = revenueValues.length > 0;
+  const hasConversion = leads.some((lead) => lead.vendeu !== null);
+  const hasCpa = hasInvestment && convertedLeads > 0;
+  const hasRoi = hasInvestment && hasRevenue;
+
+  return {
+    investment,
+    revenue,
+    roi: hasRoi ? ((revenue - investment) / investment) * 100 : null,
+    cpl: leads.length > 0 ? investment / leads.length : null,
+    cpa: hasCpa ? investment / convertedLeads : null,
+    conversionRate: leads.length > 0 ? (convertedLeads / leads.length) * 100 : null,
+    hasInvestment,
+    hasRevenue,
+    hasConversion,
+    hasCpa,
+    hasRoi,
+  };
+}
+
+function buildLeadActionSummary(leads: LeadMarketing[]) {
+  const rowsWithActionData = leads.filter((lead) => lead.statusAcionamento.trim());
+  const actioned = rowsWithActionData.filter((lead) => isActionedLead(lead)).length;
+
+  return {
+    hasActionData: rowsWithActionData.length > 0,
+    actioned,
+    notActioned: rowsWithActionData.length - actioned,
+  };
+}
+
+function isActionedLead(lead: LeadMarketing) {
+  const status = normalizeText(lead.statusAcionamento);
+
+  if (!status) {
+    return false;
+  }
+
+  return !(
+    status.includes("nao") ||
+    status.includes("não") ||
+    status.includes("pendente") ||
+    status.includes("sem")
+  );
+}
+
+function formatOptionalCurrency(value: number | null, hasData: boolean) {
+  return hasData && typeof value === "number" ? currency.format(value) : waitingForData;
+}
+
+function formatOptionalPercent(value: number | null, hasData: boolean) {
+  return hasData && typeof value === "number" ? `${value.toFixed(1)}%` : waitingForData;
 }
 
 function buildLeadSourceInsight(

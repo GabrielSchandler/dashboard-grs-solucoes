@@ -25,6 +25,15 @@ export type LeadMarketing = {
   origem: string;
   dataFormulario: string;
   horarioFormulario: string;
+  statusAcionamento: string;
+  dataAcionamento: string;
+  responsavelAcionamento: string;
+  statusLead: string;
+  motivoPerda: string;
+  investimentoAgencia: number | null;
+  vendeu: boolean | null;
+  dataVenda: string;
+  valorVenda: number | null;
 };
 
 export type VendasResponse = {
@@ -368,6 +377,38 @@ function rowToLead(row: SheetRow): LeadMarketing | null {
     horarioFormulario:
       parseDateTime(readRowValue(row, ["HORARIO FORMULARIO", "HORARIO"])) ??
       readRowText(row, ["HORARIO FORMULARIO", "HORARIO"]),
+    statusAcionamento: readRowText(row, [
+      "STATUS ACIONAMENTO",
+      "STATUS DO ACIONAMENTO",
+      "ACIONAMENTO",
+      "ACIONADO",
+    ]),
+    dataAcionamento:
+      parseDateTime(readRowValue(row, ["DATA ACIONAMENTO", "DATA DO ACIONAMENTO"])) ??
+      readRowText(row, ["DATA ACIONAMENTO", "DATA DO ACIONAMENTO"]),
+    responsavelAcionamento: readRowText(row, [
+      "RESPONSAVEL ACIONAMENTO",
+      "RESPONSAVEL PELO ACIONAMENTO",
+      "OPERADOR",
+      "VENDEDOR",
+    ]),
+    statusLead: readRowText(row, ["STATUS DO LEAD", "STATUS LEAD", "STATUS"]),
+    motivoPerda: readRowText(row, ["MOTIVO DE PERDA", "MOTIVO PERDA"]),
+    investimentoAgencia: parseNullableCurrency(
+      readRowValue(row, [
+        "INVESTIMENTO AGENCIA",
+        "INVESTIMENTO AGÊNCIA",
+        "INVESTIMENTO",
+        "CUSTO",
+      ]),
+    ),
+    vendeu: parseBoolean(readRowText(row, ["VENDEU", "CONVERTIDO", "FECHOU"])),
+    dataVenda:
+      parseDateTime(readRowValue(row, ["DATA VENDA", "DATA DA VENDA"])) ??
+      readRowText(row, ["DATA VENDA", "DATA DA VENDA"]),
+    valorVenda: parseNullableCurrency(
+      readRowValue(row, ["VALOR VENDA", "VALOR DA VENDA", "RECEITA", "RETORNO"]),
+    ),
   };
 }
 
@@ -397,6 +438,16 @@ function parseBoolean(value: string): boolean | null {
   }
 
   return null;
+}
+
+function parseNullableCurrency(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = parseCurrency(value);
+
+  return parsed > 0 ? parsed : null;
 }
 
 function parseDateTime(value: unknown): string | null {
