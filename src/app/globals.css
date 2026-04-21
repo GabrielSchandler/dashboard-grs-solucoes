@@ -735,13 +735,62 @@ button {
   gap: 12px;
 }
 
+.marketingInsightGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .marketingGrid {
   grid-template-columns: minmax(620px, 1.35fr) minmax(320px, 0.65fr);
   align-items: start;
 }
 
+.marketingGridWide {
+  grid-template-columns: minmax(620px, 1fr) minmax(420px, 0.8fr);
+}
+
 .marketingEmpty {
   margin: 12px 0 0;
+}
+
+.leadDailyRows .dailyRow {
+  grid-template-columns: 58px minmax(0, 1fr) 56px 158px;
+}
+
+.qualityRows {
+  display: grid;
+  gap: 10px;
+}
+
+.qualityRow {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(120px, 1.1fr) 42px;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  border-bottom: 1px solid #202020;
+}
+
+.qualityRow:last-child {
+  border-bottom: 0;
+}
+
+.qualityRow strong {
+  display: block;
+  color: white;
+  font-size: 14px;
+}
+
+.qualityRow small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.qualityRow span {
+  color: white;
+  font-weight: 700;
+  text-align: right;
 }
 
 .tvScreen {

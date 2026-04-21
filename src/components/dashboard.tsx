@@ -933,11 +933,17 @@ function MarketingView({
   const activeFinancing = filteredLeads.filter(
     (lead) => lead.possuiFinanciamentoAtivo === true,
   ).length;
-  const averageInstallment =
-    filteredLeads.length > 0
-      ? filteredLeads.reduce((total, lead) => total + lead.valorParcela, 0) /
-        filteredLeads.length
-      : 0;
+  const contactableLeads = filteredLeads.filter((lead) => hasContactInfo(lead)).length;
+  const qualificationRate = filteredLeads.length
+    ? Math.round((activeFinancing / filteredLeads.length) * 100)
+    : 0;
+  const dailyRows = buildLeadDailyRows(filteredLeads);
+  const peakDay = dailyRows[0] ?? null;
+  const peakHour = getPeakHour(filteredLeads);
+  const sourceInsights = marketingSourceOptions.slice(1).map((item) =>
+    buildLeadSourceInsight(item.value, dateFilteredLeads),
+  );
+  const bestSource = [...sourceInsights].sort((a, b) => b.total - a.total)[0] ?? null;
   const sourceCounts = {
     todos: dateFilteredLeads.length,
     soul: dateFilteredLeads.filter((lead) => getLeadSource(lead) === "soul").length,
@@ -1015,22 +1021,50 @@ function MarketingView({
           tone="green"
         />
         <KpiCard
-          label="Financiamento ativo"
+          label="Qualificados"
           value={String(activeFinancing)}
-          detail="Declararam sim"
+          detail={`${qualificationRate}% com financiamento ativo`}
           tone="yellow"
         />
         <KpiCard
-          label="Parcela media"
-          value={currency.format(averageInstallment)}
-          detail="Potencial da dor"
+          label="Com contato"
+          value={String(contactableLeads)}
+          detail={`${filteredLeads.length - contactableLeads} precisam revisao`}
           tone="red"
+        />
+      </section>
+
+      <section className="marketingInsightGrid">
+        <MiniMetric
+          label="Melhor origem"
+          value={bestSource && bestSource.total > 0 ? bestSource.label : "-"}
+          detail={bestSource ? `${bestSource.total} leads no periodo` : "Sem leads"}
+        />
+        <MiniMetric
+          label="Pico de captacao"
+          value={peakDay ? formatDayMonth(peakDay.date) : "-"}
+          detail={peakDay ? `${peakDay.total} leads` : "Sem movimento"}
+        />
+        <MiniMetric
+          label="Horario forte"
+          value={peakHour ? `${peakHour.hour}h` : "-"}
+          detail={peakHour ? `${peakHour.total} leads recebidos` : "Sem horario"}
+        />
+        <MiniMetric
+          label="Media diaria"
+          value={dailyRows.length ? (filteredLeads.length / dailyRows.length).toFixed(1) : "0"}
+          detail="Leads por dia com movimento"
         />
       </section>
 
       <section className="marketingGrid">
         <LeadTable leads={filteredLeads} />
-        <LeadSourcePanel counts={sourceCounts} total={dateFilteredLeads.length} />
+        <LeadSourcePanel insights={sourceInsights} total={dateFilteredLeads.length} />
+      </section>
+
+      <section className="marketingGrid marketingGridWide">
+        <LeadDailyPanel rows={dailyRows} />
+        <LeadQualityPanel leads={filteredLeads} />
       </section>
     </div>
   );
@@ -1051,8 +1085,8 @@ function LeadTable({ leads }: { leads: LeadMarketing[] }) {
               <th>Nome</th>
               <th>WhatsApp</th>
               <th>Origem</th>
-              <th>Parcela</th>
               <th>Banco</th>
+              <th>Perfil</th>
             </tr>
           </thead>
           <tbody>
@@ -1062,8 +1096,8 @@ function LeadTable({ leads }: { leads: LeadMarketing[] }) {
                 <td>{lead.nome || "-"}</td>
                 <td>{lead.whatsapp || "-"}</td>
                 <td>{lead.origem || "-"}</td>
-                <td>{lead.valorParcela > 0 ? currency.format(lead.valorParcela) : "-"}</td>
                 <td>{lead.bancoFinanceira || "-"}</td>
+                <td>{lead.possuiFinanciamentoAtivo === true ? "Qualificado" : "Triagem"}</td>
               </tr>
             ))}
           </tbody>
@@ -1079,10 +1113,10 @@ function LeadTable({ leads }: { leads: LeadMarketing[] }) {
 }
 
 function LeadSourcePanel({
-  counts,
+  insights,
   total,
 }: {
-  counts: Record<MarketingSource, number>;
+  insights: LeadSourceInsight[];
   total: number;
 }) {
   return (
@@ -1092,20 +1126,109 @@ function LeadSourcePanel({
         <span>Soul x Growper</span>
       </div>
       <div className="teamRows">
-        {marketingSourceOptions.slice(1).map((source) => {
-          const count = counts[source.value];
-          const pct = total > 0 ? (count / total) * 100 : 0;
+        {insights.map((source) => {
+          const pct = total > 0 ? (source.total / total) * 100 : 0;
 
           return (
             <div className="teamRow" key={source.value}>
               <div>
                 <strong>{source.label}</strong>
-                <small>{pct.toFixed(1)}% da base</small>
+                <small>
+                  {source.qualified} qualificados / {source.contactable} com contato
+                </small>
               </div>
               <div className="teamTrack">
-                <i style={{ width: `${Math.max(pct, count > 0 ? 4 : 0)}%` }} />
+                <i style={{ width: `${Math.max(pct, source.total > 0 ? 4 : 0)}%` }} />
               </div>
-              <span>{count}</span>
+              <span>{source.total}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+type LeadDailyRow = {
+  date: string;
+  total: number;
+  soul: number;
+  growper: number;
+};
+
+type LeadSourceInsight = {
+  value: MarketingSource;
+  label: string;
+  total: number;
+  qualified: number;
+  contactable: number;
+};
+
+function LeadDailyPanel({ rows }: { rows: LeadDailyRow[] }) {
+  const visibleRows = rows.slice(0, 10);
+  const max = Math.max(...visibleRows.map((row) => row.total), 1);
+
+  return (
+    <section className="dailyPanel">
+      <div className="sectionHeader">
+        <h2>Leads por dia</h2>
+        <span>Ritmo de captacao</span>
+      </div>
+      <div className="dailyRows leadDailyRows">
+        {visibleRows.length > 0 ? (
+          visibleRows.map((row) => (
+            <div className="dailyRow" key={row.date}>
+              <span>{formatDayMonth(row.date)}</span>
+              <div className="dailyBar">
+                <i style={{ width: `${Math.max((row.total / max) * 100, 4)}%` }} />
+              </div>
+              <strong>{row.total}</strong>
+              <small>
+                Soul {row.soul} / Growper {row.growper}
+              </small>
+            </div>
+          ))
+        ) : (
+          <p className="empty">Sem leads no periodo selecionado.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function LeadQualityPanel({ leads }: { leads: LeadMarketing[] }) {
+  const withContact = leads.filter(hasContactInfo).length;
+  const withCpf = leads.filter((lead) => onlyDigits(lead.cpf).length >= 11).length;
+  const withBank = leads.filter((lead) => lead.bancoFinanceira.trim()).length;
+  const withCase = leads.filter((lead) => lead.caso.trim().length >= 12).length;
+  const rows = [
+    { label: "WhatsApp ou CPF", value: withContact },
+    { label: "CPF preenchido", value: withCpf },
+    { label: "Banco informado", value: withBank },
+    { label: "Caso explicado", value: withCase },
+  ];
+  const max = Math.max(leads.length, 1);
+
+  return (
+    <section className="managementPanel">
+      <div className="sectionHeader">
+        <h2>Qualidade da base</h2>
+        <span>Pronto para atendimento</span>
+      </div>
+      <div className="qualityRows">
+        {rows.map((row) => {
+          const pct = leads.length ? (row.value / leads.length) * 100 : 0;
+
+          return (
+            <div className="qualityRow" key={row.label}>
+              <div>
+                <strong>{row.label}</strong>
+                <small>{pct.toFixed(1)}% da base filtrada</small>
+              </div>
+              <div className="teamTrack">
+                <i style={{ width: `${Math.max((row.value / max) * 100, row.value ? 4 : 0)}%` }} />
+              </div>
+              <span>{row.value}</span>
             </div>
           );
         })}
@@ -1126,6 +1249,84 @@ function getLeadSource(lead: LeadMarketing): MarketingSource {
   }
 
   return "todos";
+}
+
+function buildLeadSourceInsight(
+  source: MarketingSource,
+  leads: LeadMarketing[],
+): LeadSourceInsight {
+  const label =
+    marketingSourceOptions.find((item) => item.value === source)?.label ?? source;
+  const sourceLeads = leads.filter((lead) => getLeadSource(lead) === source);
+
+  return {
+    value: source,
+    label,
+    total: sourceLeads.length,
+    qualified: sourceLeads.filter((lead) => lead.possuiFinanciamentoAtivo === true)
+      .length,
+    contactable: sourceLeads.filter(hasContactInfo).length,
+  };
+}
+
+function buildLeadDailyRows(leads: LeadMarketing[]): LeadDailyRow[] {
+  const rows = new Map<string, LeadDailyRow>();
+
+  leads.forEach((lead) => {
+    const date = getDateKey(lead.dataRecebimento);
+
+    if (!date) {
+      return;
+    }
+
+    const row = rows.get(date) ?? { date, total: 0, soul: 0, growper: 0 };
+    const source = getLeadSource(lead);
+    row.total += 1;
+
+    if (source === "soul") {
+      row.soul += 1;
+    }
+
+    if (source === "growper") {
+      row.growper += 1;
+    }
+
+    rows.set(date, row);
+  });
+
+  return [...rows.values()].sort((a, b) => b.total - a.total);
+}
+
+function getPeakHour(leads: LeadMarketing[]) {
+  const hours = new Map<number, number>();
+
+  leads.forEach((lead) => {
+    const date = new Date(lead.dataRecebimento);
+
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    const hour = date.getHours();
+    hours.set(hour, (hours.get(hour) ?? 0) + 1);
+  });
+
+  const [hour, total] =
+    [...hours.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+
+  if (hour === undefined || total === undefined) {
+    return null;
+  }
+
+  return { hour: String(hour).padStart(2, "0"), total };
+}
+
+function hasContactInfo(lead: LeadMarketing) {
+  return onlyDigits(lead.whatsapp).length >= 10 || onlyDigits(lead.cpf).length >= 11;
+}
+
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
 }
 
 function normalizeText(value: string) {
