@@ -626,6 +626,78 @@ button {
   text-align: center;
 }
 
+.marketingScreen {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.marketingHeader,
+.marketingGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.marketingHeader {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  padding: 16px;
+}
+
+.marketingHeader h2 {
+  margin: 7px 0 4px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.marketingHeader p {
+  margin: 0;
+  color: var(--soft);
+  font-size: 13px;
+}
+
+.marketingTabs {
+  justify-content: flex-end;
+}
+
+.marketingTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.marketingTabs span {
+  min-width: 24px;
+  border-radius: 999px;
+  background: #242424;
+  color: var(--soft);
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
+.marketingTabs button.active span {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+}
+
+.marketingKpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.marketingGrid {
+  grid-template-columns: minmax(620px, 1.35fr) minmax(320px, 0.65fr);
+  align-items: start;
+}
+
+.marketingEmpty {
+  margin: 12px 0 0;
+}
+
 .tvScreen {
   min-height: calc(100vh - 16px);
   display: grid;

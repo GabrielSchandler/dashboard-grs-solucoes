@@ -13,12 +13,32 @@ type Venda = {
   equipe: Equipe;
 };
 
+type MarketingSource = "todos" | "soul" | "growper";
+
+type LeadMarketing = {
+  dataRecebimento: string;
+  nome: string;
+  whatsapp: string;
+  cpf: string;
+  possuiFinanciamentoAtivo: boolean | null;
+  valorParcela: number;
+  bancoFinanceira: string;
+  caso: string;
+  emailDestino: string;
+  assunto: string;
+  origem: string;
+  dataFormulario: string;
+  horarioFormulario: string;
+};
+
 type ApiResponse = {
   vendas: Venda[];
+  leads: LeadMarketing[];
   meta: number;
   refreshSeconds: number;
   updatedAt: string;
   source: string;
+  leadsSource: string;
 };
 
 type ApiState =
@@ -63,6 +83,12 @@ const compactCurrency = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
   maximumFractionDigits: 0,
 });
+
+const marketingSourceOptions: Array<{ value: MarketingSource; label: string }> = [
+  { value: "todos", label: "Todos" },
+  { value: "soul", label: "Soul" },
+  { value: "growper", label: "Growper" },
+];
 
 export default function Dashboard({
   initialView = "operacao",
@@ -169,7 +195,9 @@ function DashboardReady({
 
       {activeView === "operacao" ? <OperationView model={model} /> : null}
       {activeView === "gestao" ? <ManagementView model={model} /> : null}
-      {activeView === "marketing" ? <FutureView title="Marketing" /> : null}
+      {activeView === "marketing" ? (
+        <MarketingView leads={data.leads} source={data.leadsSource} />
+      ) : null}
     </main>
   );
 }
@@ -872,6 +900,220 @@ function LiveFeed({ vendas }: { vendas: Venda[] }) {
       </div>
     </section>
   );
+}
+
+function MarketingView({
+  leads,
+  source,
+}: {
+  leads: LeadMarketing[];
+  source: string;
+}) {
+  const [sourceFilter, setSourceFilter] = useState<MarketingSource>("todos");
+  const filteredLeads =
+    sourceFilter === "todos"
+      ? leads
+      : leads.filter((lead) => getLeadSource(lead) === sourceFilter);
+  const todayLeads = filteredLeads.filter((lead) => isToday(lead.dataRecebimento)).length;
+  const activeFinancing = filteredLeads.filter(
+    (lead) => lead.possuiFinanciamentoAtivo === true,
+  ).length;
+  const averageInstallment =
+    filteredLeads.length > 0
+      ? filteredLeads.reduce((total, lead) => total + lead.valorParcela, 0) /
+        filteredLeads.length
+      : 0;
+  const sourceCounts = {
+    todos: leads.length,
+    soul: leads.filter((lead) => getLeadSource(lead) === "soul").length,
+    growper: leads.filter((lead) => getLeadSource(lead) === "growper").length,
+  };
+
+  return (
+    <div className="marketingScreen">
+      <section className="marketingHeader">
+        <div>
+          <span className="eyebrow">Marketing</span>
+          <h2>Leads consolidado</h2>
+          <p>{source}</p>
+        </div>
+        <div className="filterTabs marketingTabs">
+          {marketingSourceOptions.map((item) => (
+            <button
+              className={sourceFilter === item.value ? "active" : ""}
+              key={item.value}
+              type="button"
+              onClick={() => setSourceFilter(item.value)}
+            >
+              {item.label}
+              <span>{sourceCounts[item.value]}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="marketingKpis">
+        <KpiCard
+          label="Leads recebidos"
+          value={String(filteredLeads.length)}
+          detail="Base captada"
+          tone="blue"
+        />
+        <KpiCard
+          label="Leads hoje"
+          value={String(todayLeads)}
+          detail="Entrada do dia"
+          tone="green"
+        />
+        <KpiCard
+          label="Financiamento ativo"
+          value={String(activeFinancing)}
+          detail="Declararam sim"
+          tone="yellow"
+        />
+        <KpiCard
+          label="Parcela media"
+          value={currency.format(averageInstallment)}
+          detail="Potencial da dor"
+          tone="red"
+        />
+      </section>
+
+      <section className="marketingGrid">
+        <LeadTable leads={filteredLeads} />
+        <LeadSourcePanel counts={sourceCounts} total={leads.length} />
+      </section>
+    </div>
+  );
+}
+
+function LeadTable({ leads }: { leads: LeadMarketing[] }) {
+  return (
+    <section className="managementPanel">
+      <div className="sectionHeader">
+        <h2>Leads recentes</h2>
+        <span>Ultimas entradas</span>
+      </div>
+      <div className="remoteTable">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Nome</th>
+              <th>WhatsApp</th>
+              <th>Origem</th>
+              <th>Parcela</th>
+              <th>Banco</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leads.slice(0, 14).map((lead, index) => (
+              <tr key={`${lead.cpf}-${lead.whatsapp}-${index}`}>
+                <td>{formatDateTimeShort(lead.dataRecebimento)}</td>
+                <td>{lead.nome || "-"}</td>
+                <td>{lead.whatsapp || "-"}</td>
+                <td>{lead.origem || "-"}</td>
+                <td>{lead.valorParcela > 0 ? currency.format(lead.valorParcela) : "-"}</td>
+                <td>{lead.bancoFinanceira || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {leads.length === 0 ? (
+        <p className="empty marketingEmpty">
+          Nenhum lead encontrado para esse filtro.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function LeadSourcePanel({
+  counts,
+  total,
+}: {
+  counts: Record<MarketingSource, number>;
+  total: number;
+}) {
+  return (
+    <section className="managementPanel">
+      <div className="sectionHeader">
+        <h2>Origem dos leads</h2>
+        <span>Soul x Growper</span>
+      </div>
+      <div className="teamRows">
+        {marketingSourceOptions.slice(1).map((source) => {
+          const count = counts[source.value];
+          const pct = total > 0 ? (count / total) * 100 : 0;
+
+          return (
+            <div className="teamRow" key={source.value}>
+              <div>
+                <strong>{source.label}</strong>
+                <small>{pct.toFixed(1)}% da base</small>
+              </div>
+              <div className="teamTrack">
+                <i style={{ width: `${Math.max(pct, count > 0 ? 4 : 0)}%` }} />
+              </div>
+              <span>{count}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function getLeadSource(lead: LeadMarketing): MarketingSource {
+  const source = normalizeText(lead.origem);
+
+  if (source.includes("soul")) {
+    return "soul";
+  }
+
+  if (source.includes("growper") || source.includes("grouper")) {
+    return "growper";
+  }
+
+  return "todos";
+}
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function isToday(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  const now = new Date();
+
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+function formatDateTimeShort(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
 }
 
 function FutureView({ title }: { title: string }) {

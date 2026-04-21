@@ -11,12 +11,30 @@ export type Venda = {
   equipe: Equipe;
 };
 
+export type LeadMarketing = {
+  dataRecebimento: string;
+  nome: string;
+  whatsapp: string;
+  cpf: string;
+  possuiFinanciamentoAtivo: boolean | null;
+  valorParcela: number;
+  bancoFinanceira: string;
+  caso: string;
+  emailDestino: string;
+  assunto: string;
+  origem: string;
+  dataFormulario: string;
+  horarioFormulario: string;
+};
+
 export type VendasResponse = {
   vendas: Venda[];
+  leads: LeadMarketing[];
   meta: number;
   refreshSeconds: number;
   updatedAt: string;
   source: string;
+  leadsSource: string;
 };
 
 type SheetRow = Record<string, unknown>;
@@ -25,14 +43,19 @@ const REQUIRED_COLUMNS = ["DATA", "COLABORADOR", "NOME_CLIENTE", "META", "EQUIPE
 
 export async function loadVendas(): Promise<VendasResponse> {
   const { buffer, source } = await fetchWorkbookBuffer();
-  const vendas = await parseWorkbook(buffer);
+  const [vendas, leadsResult] = await Promise.all([
+    parseWorkbook(buffer),
+    loadMarketingLeads(),
+  ]);
 
   return {
     vendas,
+    leads: leadsResult.leads,
     meta: readNumberEnv("DASHBOARD_META", 110000),
     refreshSeconds: readNumberEnv("DASHBOARD_REFRESH_SECONDS", 300),
     updatedAt: new Date().toISOString(),
     source,
+    leadsSource: leadsResult.source,
   };
 }
 
@@ -174,6 +197,226 @@ async function parseWorkbook(buffer: ArrayBuffer | Buffer): Promise<Venda[]> {
     .map(rowToVenda)
     .filter((venda): venda is Venda => Boolean(venda))
     .sort((a, b) => `${a.data}${a.nome}`.localeCompare(`${b.data}${b.nome}`));
+}
+
+async function loadMarketingLeads(): Promise<{ leads: LeadMarketing[]; source: string }> {
+  const { buffer, source } = await fetchLeadsWorkbookBuffer();
+  const leads = await parseLeadsWorkbook(buffer);
+
+  return { leads, source };
+}
+
+async function fetchLeadsWorkbookBuffer(): Promise<{
+  buffer: ArrayBuffer | Buffer;
+  source: string;
+}> {
+  const localPath = process.env.LOCAL_LEADS_EXCEL_PATH?.trim();
+  const directUrl = process.env.LEADS_EXCEL_DOWNLOAD_URL?.trim();
+
+  if (localPath) {
+    return {
+      buffer: await readFile(localPath),
+      source: "LOCAL_LEADS_EXCEL_PATH",
+    };
+  }
+
+  if (directUrl) {
+    return {
+      buffer: await fetchArrayBuffer(directUrl),
+      source: "LEADS_EXCEL_DOWNLOAD_URL",
+    };
+  }
+
+  const graphUrl = getLeadsGraphDownloadUrl();
+
+  if (graphUrl) {
+    const token = await getGraphAccessToken();
+
+    return {
+      buffer: await fetchArrayBuffer(graphUrl, {
+        Authorization: `Bearer ${token}`,
+      }),
+      source: "Microsoft Graph leads",
+    };
+  }
+
+  return {
+    buffer: Buffer.alloc(0),
+    source: "leads_consolidado nao configurado",
+  };
+}
+
+function getLeadsGraphDownloadUrl(): string | null {
+  const fullUrl = process.env.LEADS_GRAPH_FILE_DOWNLOAD_URL?.trim();
+
+  if (fullUrl) {
+    return fullUrl;
+  }
+
+  const driveId = process.env.LEADS_GRAPH_DRIVE_ID?.trim() ?? process.env.GRAPH_DRIVE_ID?.trim();
+  const filePath = process.env.LEADS_GRAPH_FILE_PATH?.trim();
+
+  if (!driveId || !filePath) {
+    return null;
+  }
+
+  const encodedPath = filePath
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+
+  return `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodedPath}:/content`;
+}
+
+async function parseLeadsWorkbook(buffer: ArrayBuffer | Buffer): Promise<LeadMarketing[]> {
+  const workbook = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+
+  if (!workbook.length) {
+    return [];
+  }
+
+  const sheets = await readXlsxFile(workbook);
+  const selectedSheet =
+    sheets.find((sheet) => normalizeHeader(sheet.sheet).includes("LEADS_CONSOLIDADO")) ??
+    sheets.find((sheet) => normalizeHeader(sheet.sheet).includes("LEAD")) ??
+    sheets[0];
+
+  if (!selectedSheet) {
+    return [];
+  }
+
+  const [headerRow, ...dataRows] = selectedSheet.data;
+
+  if (!headerRow) {
+    return [];
+  }
+
+  const headers = headerRow.map((header) => normalizeHeader(String(header ?? "")));
+  const normalizedRows = dataRows.map((row) =>
+    Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])),
+  );
+
+  return normalizedRows
+    .map(rowToLead)
+    .filter((lead): lead is LeadMarketing => Boolean(lead))
+    .sort((a, b) => b.dataRecebimento.localeCompare(a.dataRecebimento));
+}
+
+function rowToLead(row: SheetRow): LeadMarketing | null {
+  const nome = readRowText(row, ["NOME", "CLIENTE"]);
+  const whatsapp = readRowText(row, ["WHATSAPP", "TELEFONE", "CELULAR"]);
+  const cpf = readRowText(row, ["CPF"]);
+  const dataRecebimento =
+    parseDateTime(
+      readRowValue(row, ["DATA RECEBIMENTO", "DATA DO RECEBIMENTO", "CRIADO EM"]),
+    ) ?? parseDateTime(readRowValue(row, ["DATA FORMULARIO", "DATA"])) ?? "";
+
+  if (!nome && !whatsapp && !cpf) {
+    return null;
+  }
+
+  return {
+    dataRecebimento,
+    nome,
+    whatsapp,
+    cpf,
+    possuiFinanciamentoAtivo: parseBoolean(
+      readRowText(row, [
+        "POSSUI FINANCIAMENTO ATIVO",
+        "FINANCIAMENTO ATIVO",
+        "POSSUI FINANCIAMENTO",
+      ]),
+    ),
+    valorParcela: parseCurrency(readRowValue(row, ["VALOR DA PARCELA", "VALOR DE PARCELA"])),
+    bancoFinanceira: readRowText(row, [
+      "BANCO/FINANCEIRA",
+      "BANCO FINANCEIRA",
+      "BANCO",
+      "FINANCEIRA",
+    ]),
+    caso: readRowText(row, ["CASO", "EXPLIQUE UM POUCO DO SEU CASO"]),
+    emailDestino: readRowText(row, ["EMAIL DESTINO", "DESTINO", "PARA"]),
+    assunto: readRowText(row, ["ASSUNTO"]),
+    origem: normalizeLeadSource(readRowText(row, ["ORIGEM", "FONTE", "SOURCE"])),
+    dataFormulario:
+      parseDateTime(readRowValue(row, ["DATA FORMULARIO", "DATA"])) ??
+      readRowText(row, ["DATA FORMULARIO", "DATA"]),
+    horarioFormulario:
+      parseDateTime(readRowValue(row, ["HORARIO FORMULARIO", "HORARIO"])) ??
+      readRowText(row, ["HORARIO FORMULARIO", "HORARIO"]),
+  };
+}
+
+function readRowValue(row: SheetRow, columns: string[]): unknown {
+  for (const column of columns) {
+    if (row[column] !== undefined && row[column] !== null && row[column] !== "") {
+      return row[column];
+    }
+  }
+
+  return "";
+}
+
+function readRowText(row: SheetRow, columns: string[]): string {
+  return String(readRowValue(row, columns) ?? "").trim();
+}
+
+function parseBoolean(value: string): boolean | null {
+  const text = normalizeHeader(value);
+
+  if (["SIM", "S", "YES", "TRUE"].includes(text)) {
+    return true;
+  }
+
+  if (["NAO", "N", "NO", "FALSE"].includes(text)) {
+    return false;
+  }
+
+  return null;
+}
+
+function parseDateTime(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString();
+  }
+
+  if (typeof value === "number") {
+    return new Date(Date.UTC(1899, 11, 30 + value)).toISOString();
+  }
+
+  const text = String(value ?? "").trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const parsed = new Date(text);
+
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+
+  const brDate = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+  if (brDate) {
+    return `${brDate[3]}-${brDate[2].padStart(2, "0")}-${brDate[1].padStart(2, "0")}T00:00:00.000Z`;
+  }
+
+  return null;
+}
+
+function normalizeLeadSource(value: string): string {
+  const normalized = normalizeHeader(value);
+
+  if (normalized.includes("SOUL")) {
+    return "Soul";
+  }
+
+  if (normalized.includes("GROWPER") || normalized.includes("GROUPER")) {
+    return "Growper";
+  }
+
+  return value.trim() || "Nao informado";
 }
 
 function normalizeHeader(value: string): string {
