@@ -45,7 +45,7 @@ export async function loadVendas(): Promise<VendasResponse> {
   const { buffer, source } = await fetchWorkbookBuffer();
   const [vendas, leadsResult] = await Promise.all([
     parseWorkbook(buffer),
-    loadMarketingLeads(),
+    loadMarketingLeads(buffer, source),
   ]);
 
   return {
@@ -199,14 +199,23 @@ async function parseWorkbook(buffer: ArrayBuffer | Buffer): Promise<Venda[]> {
     .sort((a, b) => `${a.data}${a.nome}`.localeCompare(`${b.data}${b.nome}`));
 }
 
-async function loadMarketingLeads(): Promise<{ leads: LeadMarketing[]; source: string }> {
-  const { buffer, source } = await fetchLeadsWorkbookBuffer();
+async function loadMarketingLeads(
+  fallbackBuffer: ArrayBuffer | Buffer,
+  fallbackSource: string,
+): Promise<{ leads: LeadMarketing[]; source: string }> {
+  const { buffer, source } = await fetchLeadsWorkbookBuffer(
+    fallbackBuffer,
+    fallbackSource,
+  );
   const leads = await parseLeadsWorkbook(buffer);
 
   return { leads, source };
 }
 
-async function fetchLeadsWorkbookBuffer(): Promise<{
+async function fetchLeadsWorkbookBuffer(
+  fallbackBuffer: ArrayBuffer | Buffer,
+  fallbackSource: string,
+): Promise<{
   buffer: ArrayBuffer | Buffer;
   source: string;
 }> {
@@ -241,8 +250,8 @@ async function fetchLeadsWorkbookBuffer(): Promise<{
   }
 
   return {
-    buffer: Buffer.alloc(0),
-    source: "leads_consolidado nao configurado",
+    buffer: fallbackBuffer,
+    source: `${fallbackSource} / leads_consolidado`,
   };
 }
 
