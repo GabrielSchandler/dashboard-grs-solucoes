@@ -254,7 +254,8 @@ function getLeadsGraphDownloadUrl(): string | null {
   }
 
   const driveId = process.env.LEADS_GRAPH_DRIVE_ID?.trim() ?? process.env.GRAPH_DRIVE_ID?.trim();
-  const filePath = process.env.LEADS_GRAPH_FILE_PATH?.trim();
+  const filePath =
+    process.env.LEADS_GRAPH_FILE_PATH?.trim() ?? inferLeadsGraphFilePath();
 
   if (!driveId || !filePath) {
     return null;
@@ -266,6 +267,20 @@ function getLeadsGraphDownloadUrl(): string | null {
     .join("/");
 
   return `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodedPath}:/content`;
+}
+
+function inferLeadsGraphFilePath(): string | null {
+  const vendasPath = process.env.GRAPH_FILE_PATH?.trim();
+
+  if (!vendasPath) {
+    return null;
+  }
+
+  const inferredPath = vendasPath
+    .replace(/BASE DE VENDAS/gi, "BASE DE LEADS")
+    .replace(/VENDAS/gi, "LEADS");
+
+  return inferredPath === vendasPath ? null : inferredPath;
 }
 
 async function parseLeadsWorkbook(buffer: ArrayBuffer | Buffer): Promise<LeadMarketing[]> {
