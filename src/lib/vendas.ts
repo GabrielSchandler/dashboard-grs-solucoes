@@ -91,7 +91,7 @@ async function fetchWorkbookBuffer(): Promise<{ buffer: ArrayBuffer | Buffer; so
   }
 
   throw new Error(
-    "Configure EXCEL_DOWNLOAD_URL ou as variaveis Microsoft Graph para ler a planilha.",
+    "Configure EXCEL_DOWNLOAD_URL ou as variáveis Microsoft Graph para ler a planilha.",
   );
 }
 
@@ -148,7 +148,7 @@ async function getGraphAccessToken(): Promise<string> {
   const data = (await response.json()) as { access_token?: string };
 
   if (!data.access_token) {
-    throw new Error("Microsoft Graph nao retornou access_token.");
+    throw new Error("Microsoft Graph não retornou access_token.");
   }
 
   return data.access_token;
@@ -179,7 +179,7 @@ async function parseWorkbook(buffer: ArrayBuffer | Buffer): Promise<Venda[]> {
   const [headerRow, ...dataRows] = selectedSheet.data;
 
   if (!headerRow) {
-    throw new Error("A planilha nao possui cabecalho.");
+    throw new Error("A planilha não possui cabeçalho.");
   }
 
   const headers = headerRow.map((header) => normalizeHeader(String(header ?? "")));
@@ -440,7 +440,7 @@ function normalizeLeadSource(value: string): string {
     return "Growper";
   }
 
-  return value.trim() || "Nao informado";
+  return value.trim() || "Não informado";
 }
 
 function normalizeHeader(value: string): string {

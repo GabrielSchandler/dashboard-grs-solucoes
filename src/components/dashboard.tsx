@@ -104,7 +104,7 @@ export default function Dashboard({
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Nao foi possivel carregar os dados.");
+        throw new Error(payload.error ?? "Não foi possível carregar os dados.");
       }
 
       setState({ status: "success", data: payload });
@@ -144,9 +144,9 @@ export default function Dashboard({
       <main className="dashboardShell">
         <Header activeView={activeView} onViewChange={setActiveView} />
         <section className="statePanel statePanelError">
-          <h2>Conexao com a planilha pendente</h2>
+          <h2>Conexão com a planilha pendente</h2>
           <p>{state.error}</p>
-          <p>Confira as variaveis da Vercel e a permissao do Microsoft Graph.</p>
+          <p>Confira as variáveis da Vercel e a permissão do Microsoft Graph.</p>
         </section>
       </main>
     );
@@ -210,7 +210,7 @@ function OperationView({ model }: { model: DashboardModel }) {
           <span className="eyebrow">Faturamento total</span>
           <strong>{currency.format(model.total)}</strong>
           <div className="goalLine">
-            <span>Meta superacao {currency.format(model.meta)}</span>
+            <span>Meta superação {currency.format(model.meta)}</span>
             <span>{model.goalPct.toFixed(1)}%</span>
           </div>
           <div className="goalTrack" aria-label={`Meta em ${model.goalPct.toFixed(1)}%`}>
@@ -218,8 +218,8 @@ function OperationView({ model }: { model: DashboardModel }) {
           </div>
           <footer>
             {model.remaining > 0
-              ? `Faltam ${currency.format(model.remaining)} para a festa da superacao`
-              : "Festa da superacao confirmada"}
+              ? `Faltam ${currency.format(model.remaining)} para a festa da superação`
+              : "Festa da superação confirmada"}
           </footer>
         </article>
 
@@ -230,21 +230,21 @@ function OperationView({ model }: { model: DashboardModel }) {
           tone="blue"
         />
         <KpiCard
-          label="Juridico"
+          label="Jurídico"
           value={currency.format(model.totalJuridico)}
           detail={`${model.juridico.length} vendas`}
           tone="green"
         />
         <KpiCard
-          label="Por dia util"
+          label="Por dia útil"
           value={currency.format(model.requiredPerRemainingWorkday)}
-          detail={`${model.remainingWorkdays} dias uteis restantes`}
+          detail={`${model.remainingWorkdays} dias úteis restantes`}
           tone="red"
         />
         <KpiCard
-          label="Projecao"
+          label="Projeção"
           value={currency.format(model.projectedRevenue)}
-          detail={`Media diaria ${currency.format(model.averageDailyRevenue)}`}
+          detail={`Média diária ${currency.format(model.averageDailyRevenue)}`}
           tone={model.projectedRevenue >= model.meta ? "green" : "yellow"}
         />
       </section>
@@ -268,7 +268,7 @@ function OperationView({ model }: { model: DashboardModel }) {
         <MiniMetric
           label="Ticket medio"
           value={currency.format(model.averageTicket)}
-          detail={`${model.vendas.length} vendas no mes`}
+          detail={`${model.vendas.length} vendas no mês`}
         />
       </section>
 
@@ -279,7 +279,7 @@ function OperationView({ model }: { model: DashboardModel }) {
           week={model.rankComercialWeek}
         />
         <RankingBoard
-          title="Ranking juridico"
+          title="Ranking jurídico"
           month={model.rankJuridicoMonth}
           week={model.rankJuridicoWeek}
         />
@@ -311,7 +311,7 @@ function TvView({
         <div>
           <span className="livePill"><i />Ao vivo</span>
           <h2>Central de Vendas</h2>
-          <p>Meta base R$ 100 mil / superacao R$ 110 mil</p>
+          <p>Meta base R$ 100 mil / superação R$ 110 mil</p>
         </div>
         <div className="tvTime">
           <strong>{clock.time}</strong>
@@ -333,11 +333,11 @@ function TvView({
           </div>
           <footer>
             <span>Base {model.baseGoalPct.toFixed(1)}%</span>
-            <span>Superacao {model.goalPct.toFixed(1)}%</span>
+            <span>Superação {model.goalPct.toFixed(1)}%</span>
           </footer>
         </article>
-        <TvMetric label="Por dia util" value={currency.format(model.requiredPerRemainingWorkday)} detail={`${model.remainingWorkdays} dias restantes`} warn />
-        <TvMetric label="Projecao" value={currency.format(model.projectedRevenue)} detail={model.projectedRevenue >= model.meta ? "Ritmo de festa" : "Abaixo da superacao"} good={model.projectedRevenue >= model.meta} />
+        <TvMetric label="Por dia útil" value={currency.format(model.requiredPerRemainingWorkday)} detail={`${model.remainingWorkdays} dias restantes`} warn />
+        <TvMetric label="Projeção" value={currency.format(model.projectedRevenue)} detail={model.projectedRevenue >= model.meta ? "Ritmo de festa" : "Abaixo da superação"} good={model.projectedRevenue >= model.meta} />
         <TvMetric label="Ritmo hoje" value={currency.format(Math.abs(model.rhythmDelta))} detail={model.rhythmDelta >= 0 ? "Acima do ideal" : "Abaixo do ideal"} good={model.rhythmDelta >= 0} />
       </section>
 
@@ -350,7 +350,7 @@ function TvView({
       <footer className="tvFooter">
         <strong>
           {model.goalPct >= 100
-            ? "Festa da superacao confirmada"
+            ? "Festa da superação confirmada"
             : `Faltam ${currency.format(model.remaining)} para a festa`}
         </strong>
         <span>
@@ -426,7 +426,7 @@ function CommercialPodium({ ranking }: { ranking: Ranking[] }) {
 function LegalTvList({ ranking }: { ranking: Ranking[] }) {
   return (
     <div className="tvLegalRank">
-      <h3>Juridico</h3>
+      <h3>Jurídico</h3>
       <div className="legalList">
         {ranking.slice(0, 2).map((seller, index) => (
           <article className={index < 2 ? "highlight" : ""} key={seller.nome}>
@@ -487,7 +487,7 @@ function Header({
         </div>
         <div>
           <h1>Central de Vendas</h1>
-          <p>Operacao ao vivo, meta da empresa e performance por equipe</p>
+          <p>Operação ao vivo, meta da empresa e performance por equipe</p>
         </div>
       </div>
 
@@ -504,14 +504,14 @@ function Header({
           type="button"
           onClick={() => onViewChange("operacao")}
         >
-          Operacao
+          Operação
         </button>
         <button
           className={activeView === "gestao" ? "active" : ""}
           type="button"
           onClick={() => onViewChange("gestao")}
         >
-          Gestao
+          Gestão
         </button>
         <button
           className={activeView === "marketing" ? "active" : ""}
@@ -568,17 +568,17 @@ function ManagementView({ model }: { model: DashboardModel }) {
         <article>
           <span className="eyebrow">Visao executiva</span>
           <h2>{currency.format(model.total)}</h2>
-          <p>{model.baseGoalPct.toFixed(1)}% da meta base / {model.goalPct.toFixed(1)}% da superacao</p>
+          <p>{model.baseGoalPct.toFixed(1)}% da meta base / {model.goalPct.toFixed(1)}% da superação</p>
         </article>
         <article>
           <span className="eyebrow">Falta para meta</span>
           <h2>{currency.format(model.remaining)}</h2>
-          <p>{currency.format(model.requiredPerRemainingWorkday)} por dia util restante</p>
+          <p>{currency.format(model.requiredPerRemainingWorkday)} por dia útil restante</p>
         </article>
         <article>
-          <span className="eyebrow">Projecao no ritmo atual</span>
+          <span className="eyebrow">Projeção no ritmo atual</span>
           <h2>{currency.format(model.projectedRevenue)}</h2>
-          <p>Media diaria {currency.format(model.averageDailyRevenue)}</p>
+          <p>Média diária {currency.format(model.averageDailyRevenue)}</p>
         </article>
         <article>
           <span className="eyebrow">Melhor dia</span>
@@ -589,7 +589,7 @@ function ManagementView({ model }: { model: DashboardModel }) {
 
       <section className="managementGrid">
         <PacePanel model={model} />
-        <SellerTable title="Top vendedores no mes" ranking={model.overallRanking} />
+        <SellerTable title="Top vendedores no mês" ranking={model.overallRanking} />
       </section>
 
       <section className="managementGrid managementGridWide">
@@ -611,7 +611,7 @@ function PacePanel({ model }: { model: DashboardModel }) {
       </div>
       <div className="paceRows">
         <div>
-          <span>Media por dia util</span>
+          <span>Média por dia útil</span>
           <strong>{currency.format(model.averageDailyRevenue)}</strong>
         </div>
         <div>
@@ -627,7 +627,7 @@ function PacePanel({ model }: { model: DashboardModel }) {
           <strong>{currency.format(Math.abs(model.rhythmDelta))}</strong>
         </div>
         <div>
-          <span>Dias uteis</span>
+          <span>Dias úteis</span>
           <strong>
             {model.elapsedWorkdays}/{model.totalWorkdays}
           </strong>
@@ -646,8 +646,8 @@ function TeamComparison({ teams }: { teams: TeamSummary[] }) {
   return (
     <section className="managementPanel">
       <div className="sectionHeader">
-        <h2>Comercial x Juridico</h2>
-        <span>Participacao na receita</span>
+        <h2>Comercial x Jurídico</h2>
+        <span>Participação na receita</span>
       </div>
       <div className="teamRows">
         {teams.map((team) => (
@@ -709,7 +709,7 @@ function SalesTable({
               type="button"
               onClick={() => onFilterChange(item)}
             >
-              {item}
+              {item === "TODOS" ? "Todos" : formatTeamName(item)}
             </button>
           ))}
         </div>
@@ -729,7 +729,7 @@ function SalesTable({
             {vendas.slice(0, 14).map((venda) => (
               <tr key={`${venda.data}-${venda.equipe}-${venda.nome}-${venda.cliente}`}>
                 <td>{formatDayMonth(venda.data)}</td>
-                <td>{venda.equipe}</td>
+                <td>{formatTeamName(venda.equipe)}</td>
                 <td>{venda.nome}</td>
                 <td>{venda.cliente}</td>
                 <td>{currency.format(venda.meta)}</td>
@@ -780,6 +780,14 @@ function MiniMetric({
   );
 }
 
+function formatTeamName(team: "TODOS" | Equipe) {
+  if (team === "TODOS") {
+    return "Todos";
+  }
+
+  return team === "JURIDICO" ? "Jurídico" : "Comercial";
+}
+
 function RankingBoard({
   title,
   month,
@@ -793,10 +801,10 @@ function RankingBoard({
     <section className="rankingBoard">
       <div className="sectionHeader">
         <h2>{title}</h2>
-        <span>Mes e semana</span>
+        <span>Mês e semana</span>
       </div>
       <div className="rankingColumns">
-        <RankingList title="Mes" ranking={month} />
+        <RankingList title="Mês" ranking={month} />
         <RankingList title="Semana" ranking={week} compact />
       </div>
     </section>
@@ -831,7 +839,7 @@ function RankingList({
           </div>
         ))
       ) : (
-        <p className="empty">Sem vendas neste periodo.</p>
+        <p className="empty">Sem vendas neste período.</p>
       )}
     </div>
   );
@@ -867,7 +875,7 @@ function DailyRevenuePanel({
             </div>
           ))
         ) : (
-          <p className="empty">Sem vendas no mes selecionado.</p>
+          <p className="empty">Sem vendas no mês selecionado.</p>
         )}
       </div>
     </section>
@@ -878,7 +886,7 @@ function LiveFeed({ vendas }: { vendas: Venda[] }) {
   return (
     <section className="liveFeed">
       <div className="sectionHeader">
-        <h2>Ultimas vendas</h2>
+        <h2>Últimas vendas</h2>
         <span>Entrada mais recente</span>
       </div>
       <div className="feedList">
@@ -886,7 +894,7 @@ function LiveFeed({ vendas }: { vendas: Venda[] }) {
           <article className="feedItem" key={`${venda.equipe}-${venda.data}-${venda.nome}-${venda.cliente}`}>
             <div>
               <span className={`teamTag ${venda.equipe === "COMERCIAL" ? "teamCom" : "teamJur"}`}>
-                {venda.equipe}
+                {formatTeamName(venda.equipe)}
               </span>
               <strong>{venda.nome}</strong>
               <p>{venda.cliente}</p>
@@ -961,7 +969,7 @@ function MarketingView({
         <div className="marketingControls">
           <div className="dateFilters" aria-label="Filtros de data">
             <label>
-              Mes
+              Mês
               <input
                 type="month"
                 value={monthFilter}
@@ -985,11 +993,9 @@ function MarketingView({
             <button type="button" onClick={() => setDayFilter(getRelativeDateKey(-1))}>
               Ontem
             </button>
-            {dayFilter ? (
-              <button type="button" onClick={() => setDayFilter("")}>
-                Ver mes
-              </button>
-            ) : null}
+            <button type="button" onClick={() => setDayFilter("")}>
+              Ver mês
+            </button>
           </div>
           <div className="filterTabs marketingTabs">
             {marketingSourceOptions.map((item) => (
@@ -1029,7 +1035,7 @@ function MarketingView({
         <KpiCard
           label="Com contato"
           value={String(contactableLeads)}
-          detail={`${filteredLeads.length - contactableLeads} precisam revisao`}
+          detail={`${filteredLeads.length - contactableLeads} precisam revisão`}
           tone="red"
         />
       </section>
@@ -1038,20 +1044,20 @@ function MarketingView({
         <MiniMetric
           label="Melhor origem"
           value={bestSource && bestSource.total > 0 ? bestSource.label : "-"}
-          detail={bestSource ? `${bestSource.total} leads no periodo` : "Sem leads"}
+          detail={bestSource ? `${bestSource.total} leads no período` : "Sem leads"}
         />
         <MiniMetric
-          label="Pico de captacao"
+          label="Pico de captação"
           value={peakDay ? formatDayMonth(peakDay.date) : "-"}
           detail={peakDay ? `${peakDay.total} leads` : "Sem movimento"}
         />
         <MiniMetric
-          label="Horario forte"
+          label="Horário forte"
           value={peakHour ? `${peakHour.hour}h` : "-"}
-          detail={peakHour ? `${peakHour.total} leads recebidos` : "Sem horario"}
+          detail={peakHour ? `${peakHour.total} leads recebidos` : "Sem horário"}
         />
         <MiniMetric
-          label="Media diaria"
+          label="Média diária"
           value={dailyRows.length ? (filteredLeads.length / dailyRows.length).toFixed(1) : "0"}
           detail="Leads por dia com movimento"
         />
@@ -1075,7 +1081,7 @@ function LeadTable({ leads }: { leads: LeadMarketing[] }) {
     <section className="managementPanel">
       <div className="sectionHeader">
         <h2>Leads recentes</h2>
-        <span>Ultimas entradas</span>
+        <span>Últimas entradas</span>
       </div>
       <div className="remoteTable">
         <table>
@@ -1172,7 +1178,7 @@ function LeadDailyPanel({ rows }: { rows: LeadDailyRow[] }) {
     <section className="dailyPanel">
       <div className="sectionHeader">
         <h2>Leads por dia</h2>
-        <span>Ritmo de captacao</span>
+        <span>Ritmo de captação</span>
       </div>
       <div className="dailyRows leadDailyRows">
         {visibleRows.length > 0 ? (
@@ -1400,7 +1406,7 @@ function FutureView({ title }: { title: string }) {
     <section className="futureView">
       <span className="eyebrow">Proxima tela</span>
       <h2>{title}</h2>
-      <p>Espaco reservado para novos indicadores sem misturar com a operacao da TV.</p>
+      <p>Espaço reservado para novos indicadores sem misturar com a operação da TV.</p>
     </section>
   );
 }
@@ -1434,7 +1440,7 @@ function buildDashboardModel(data: ApiResponse) {
     workdays.remaining > 0 ? Math.max(data.meta - total, 0) / workdays.remaining : 0;
   const teamSummary = [
     makeTeamSummary("Comercial", totalComercial, comercial.length, total),
-    makeTeamSummary("Juridico", totalJuridico, juridico.length, total),
+    makeTeamSummary("Jurídico", totalJuridico, juridico.length, total),
   ];
 
   return {
@@ -1516,7 +1522,7 @@ function useWeather(): WeatherState {
   useEffect(() => {
     const latitude = process.env.NEXT_PUBLIC_WEATHER_LAT ?? "-23.5505";
     const longitude = process.env.NEXT_PUBLIC_WEATHER_LON ?? "-46.6333";
-    const label = process.env.NEXT_PUBLIC_WEATHER_LABEL ?? "Sao Paulo";
+    const label = process.env.NEXT_PUBLIC_WEATHER_LABEL ?? "São Paulo";
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`;
 
     async function loadWeather() {

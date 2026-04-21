@@ -1502,8 +1502,22 @@ button {
   .wideGrid,
   .managementHero,
   .managementGrid,
-  .managementGridWide {
+  .managementGridWide,
+  .marketingHeader,
+  .marketingGrid,
+  .marketingGridWide,
+  .marketingKpis,
+  .marketingInsightGrid {
     grid-template-columns: 1fr;
+  }
+
+  .marketingControls {
+    justify-items: stretch;
+  }
+
+  .dateFilters,
+  .marketingTabs {
+    justify-content: flex-start;
   }
 
   .statusBlock {

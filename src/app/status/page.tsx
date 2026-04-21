@@ -12,8 +12,8 @@ export default async function StatusPage() {
     return (
       <main className="statusPage">
         <section>
-          <span className="eyebrow">Diagnostico</span>
-          <h1>Integracao ativa</h1>
+          <span className="eyebrow">Diagnóstico</span>
+          <h1>Integração ativa</h1>
           <p>A planilha foi lida com sucesso.</p>
         </section>
         <dl>
@@ -58,8 +58,8 @@ export default async function StatusPage() {
     return (
       <main className="statusPage statusError">
         <section>
-          <span className="eyebrow">Diagnostico</span>
-          <h1>Integracao com erro</h1>
+          <span className="eyebrow">Diagnóstico</span>
+          <h1>Integração com erro</h1>
           <p>{error instanceof Error ? error.message : "Erro desconhecido."}</p>
         </section>
       </main>
