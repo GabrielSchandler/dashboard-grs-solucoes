@@ -691,7 +691,7 @@ button {
 
 .tvHero {
   display: grid;
-  grid-template-columns: minmax(420px, 1.55fr) repeat(3, minmax(190px, 0.6fr));
+  grid-template-columns: minmax(340px, 1.45fr) repeat(3, minmax(140px, 0.6fr));
   gap: 12px;
 }
 
@@ -776,7 +776,7 @@ button {
 
 .tvBody {
   display: grid;
-  grid-template-columns: minmax(660px, 1.25fr) minmax(460px, 0.9fr) minmax(300px, 0.58fr);
+  grid-template-columns: minmax(520px, 1.22fr) minmax(360px, 0.86fr) minmax(240px, 0.58fr);
   gap: 12px;
   min-height: 0;
 }
@@ -802,7 +802,7 @@ button {
 .tvCommercialRank {
   margin-bottom: 10px;
   display: grid;
-  grid-template-columns: minmax(360px, 1.2fr) minmax(190px, 0.8fr);
+  grid-template-columns: minmax(330px, 1.2fr) minmax(150px, 0.8fr);
   grid-template-areas:
     "title title"
     "podium list";
@@ -1330,9 +1330,6 @@ button {
 @media (max-width: 980px) {
   .topBar,
   .heroGrid,
-  .tvHeader,
-  .tvHero,
-  .tvBody,
   .operationGrid,
   .pulseGrid,
   .wideGrid,
@@ -1349,6 +1346,16 @@ button {
 
   .heroCard strong {
     font-size: 48px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .tvBody {
+    grid-template-columns: minmax(500px, 1.25fr) minmax(320px, 0.75fr);
+  }
+
+  .tvBody .liveFeed {
+    grid-column: 2;
   }
 }
 
