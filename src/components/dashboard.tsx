@@ -41,9 +41,16 @@ type LeadMarketing = {
   valorVenda: number | null;
 };
 
+type MarketingInvestment = {
+  empresa: string;
+  semanal: number;
+  mensalidade: number;
+};
+
 type ApiResponse = {
   vendas: Venda[];
   leads: LeadMarketing[];
+  marketingInvestments: MarketingInvestment[];
   meta: number;
   refreshSeconds: number;
   updatedAt: string;
@@ -208,7 +215,11 @@ function DashboardReady({
       {activeView === "operacao" ? <OperationView model={model} /> : null}
       {activeView === "gestao" ? <ManagementView model={model} /> : null}
       {activeView === "marketing" ? (
-        <MarketingView leads={data.leads} source={data.leadsSource} />
+        <MarketingView
+          investments={data.marketingInvestments}
+          leads={data.leads}
+          source={data.leadsSource}
+        />
       ) : null}
     </main>
   );
@@ -923,9 +934,11 @@ function LiveFeed({ vendas }: { vendas: Venda[] }) {
 }
 
 function MarketingView({
+  investments,
   leads,
   source,
 }: {
+  investments: MarketingInvestment[];
   leads: LeadMarketing[];
   source: string;
 }) {
@@ -967,10 +980,11 @@ function MarketingView({
       : dateFilteredLeads.filter((lead) => getLeadSource(lead) === sourceFilter);
   const todayLeads = filteredLeads.filter((lead) => isToday(lead.dataRecebimento)).length;
   const dailyRows = buildLeadDailyRows(filteredLeads);
+  const filteredInvestments = filterMarketingInvestments(investments, sourceFilter);
   const sourceInsights = marketingSourceOptions.slice(1).map((item) =>
-    buildLeadSourceInsight(item.value, dateFilteredLeads),
+    buildLeadSourceInsight(item.value, dateFilteredLeads, investments),
   );
-  const financials = buildMarketingFinancials(filteredLeads);
+  const financials = buildMarketingFinancials(filteredLeads, filteredInvestments);
   const actionSummary = buildLeadActionSummary(filteredLeads);
   const operationalMetrics = buildMarketingOperationalMetrics(filteredLeads, actionSummary);
   const sourceCounts = Object.fromEntries(
@@ -1306,7 +1320,9 @@ function LeadSourcePanel({
             <div className="teamRow" key={source.value}>
               <div>
                 <strong>{source.label}</strong>
-                <small>{pct.toFixed(1)}% dos leads no período</small>
+                <small>
+                  {pct.toFixed(1)}% dos leads / {compactCurrency.format(source.monthlyInvestment)} mês
+                </small>
               </div>
               <div className="teamTrack">
                 <i style={{ width: `${Math.max(pct, source.total > 0 ? 4 : 0)}%` }} />
@@ -1419,6 +1435,8 @@ type LeadSourceInsight = {
   total: number;
   qualified: number;
   contactable: number;
+  monthlyInvestment: number;
+  weeklyInvestment: number;
 };
 
 function LeadDailyPanel({ rows }: { rows: LeadDailyRow[] }) {
@@ -1520,17 +1538,43 @@ function getLeadSource(lead: LeadMarketing): MarketingSource {
   return "sem_origem";
 }
 
-function buildMarketingFinancials(leads: LeadMarketing[]) {
-  const investmentValues = leads
+function getInvestmentSource(investment: MarketingInvestment): MarketingSource {
+  const source = normalizeText(investment.empresa);
+
+  if (source.includes("soul")) {
+    return "soul";
+  }
+
+  if (source.includes("growper") || source.includes("growth") || source.includes("grouper")) {
+    return "growper";
+  }
+
+  return "sem_origem";
+}
+
+function buildMarketingFinancials(
+  leads: LeadMarketing[],
+  investments: MarketingInvestment[],
+) {
+  const monthlyInvestment = investments.reduce(
+    (total, investment) => total + investment.mensalidade,
+    0,
+  );
+  const weeklyInvestment = investments.reduce(
+    (total, investment) => total + investment.semanal,
+    0,
+  );
+  const leadInvestmentValues = leads
     .map((lead) => lead.investimentoAgencia)
     .filter((value): value is number => typeof value === "number" && value > 0);
   const revenueValues = leads
     .map((lead) => lead.valorVenda)
     .filter((value): value is number => typeof value === "number" && value > 0);
   const convertedLeads = leads.filter((lead) => lead.vendeu === true).length;
-  const investment = investmentValues.reduce((total, value) => total + value, 0);
+  const investment =
+    monthlyInvestment || leadInvestmentValues.reduce((total, value) => total + value, 0);
   const revenue = revenueValues.reduce((total, value) => total + value, 0);
-  const hasInvestment = investmentValues.length > 0;
+  const hasInvestment = investment > 0;
   const hasRevenue = revenueValues.length > 0;
   const hasConversion = leads.some((lead) => lead.vendeu !== null);
   const hasCpa = hasInvestment && convertedLeads > 0;
@@ -1539,6 +1583,7 @@ function buildMarketingFinancials(leads: LeadMarketing[]) {
 
   return {
     investment,
+    weeklyInvestment,
     revenue,
     roi: hasRoi ? ((revenue - investment) / investment) * 100 : null,
     cpl: leads.length > 0 ? investment / leads.length : null,
@@ -1631,13 +1676,26 @@ function formatOptionalHours(value: number | null) {
   return value >= 24 ? `${(value / 24).toFixed(1)} dias` : `${value.toFixed(1)}h`;
 }
 
+function filterMarketingInvestments(
+  investments: MarketingInvestment[],
+  source: MarketingSource,
+) {
+  if (source === "todos") {
+    return investments.filter((investment) => getInvestmentSource(investment) !== "sem_origem");
+  }
+
+  return investments.filter((investment) => getInvestmentSource(investment) === source);
+}
+
 function buildLeadSourceInsight(
   source: MarketingSource,
   leads: LeadMarketing[],
+  investments: MarketingInvestment[],
 ): LeadSourceInsight {
   const label =
     marketingSourceOptions.find((item) => item.value === source)?.label ?? source;
   const sourceLeads = leads.filter((lead) => getLeadSource(lead) === source);
+  const sourceInvestments = filterMarketingInvestments(investments, source);
 
   return {
     value: source,
@@ -1646,6 +1704,14 @@ function buildLeadSourceInsight(
     qualified: sourceLeads.filter((lead) => lead.possuiFinanciamentoAtivo === true)
       .length,
     contactable: sourceLeads.filter(hasContactInfo).length,
+    monthlyInvestment: sourceInvestments.reduce(
+      (total, investment) => total + investment.mensalidade,
+      0,
+    ),
+    weeklyInvestment: sourceInvestments.reduce(
+      (total, investment) => total + investment.semanal,
+      0,
+    ),
   };
 }
 
@@ -1722,32 +1788,17 @@ function normalizeText(value: string) {
 }
 
 function isToday(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return false;
-  }
-
-  const now = new Date();
-
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  );
+  return getDateKey(value) === getRelativeDateKey(0);
 }
 
 function formatDateTimeShort(value: string) {
-  const date = new Date(value);
+  const dateKey = getDateKey(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!dateKey) {
     return "-";
   }
 
-  return date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-  });
+  return formatDayMonth(dateKey);
 }
 
 function getCurrentMonthKey() {
@@ -1766,6 +1817,12 @@ function getRelativeDateKey(offsetDays: number) {
 }
 
 function getDateKey(value: string) {
+  const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (isoDate) {
+    return `${isoDate[1]}-${isoDate[2]}-${isoDate[3]}`;
+  }
+
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {

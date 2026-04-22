@@ -36,9 +36,16 @@ export type LeadMarketing = {
   valorVenda: number | null;
 };
 
+export type MarketingInvestment = {
+  empresa: string;
+  semanal: number;
+  mensalidade: number;
+};
+
 export type VendasResponse = {
   vendas: Venda[];
   leads: LeadMarketing[];
+  marketingInvestments: MarketingInvestment[];
   meta: number;
   refreshSeconds: number;
   updatedAt: string;
@@ -52,14 +59,16 @@ const REQUIRED_COLUMNS = ["DATA", "COLABORADOR", "NOME_CLIENTE", "META", "EQUIPE
 
 export async function loadVendas(): Promise<VendasResponse> {
   const { buffer, source } = await fetchWorkbookBuffer();
-  const [vendas, leadsResult] = await Promise.all([
+  const [vendas, leadsResult, marketingInvestments] = await Promise.all([
     parseWorkbook(buffer),
     loadMarketingLeads(buffer, source),
+    parseMarketingInvestments(buffer),
   ]);
 
   return {
     vendas,
     leads: leadsResult.leads,
+    marketingInvestments,
     meta: readNumberEnv("DASHBOARD_META", 110000),
     refreshSeconds: readNumberEnv("DASHBOARD_REFRESH_SECONDS", 300),
     updatedAt: new Date().toISOString(),
@@ -333,6 +342,58 @@ async function parseLeadsWorkbook(buffer: ArrayBuffer | Buffer): Promise<LeadMar
     .map((row) => rowToLead(row, selectedSheet.sheet))
     .filter((lead): lead is LeadMarketing => Boolean(lead))
     .sort((a, b) => b.dataRecebimento.localeCompare(a.dataRecebimento));
+}
+
+async function parseMarketingInvestments(
+  buffer: ArrayBuffer | Buffer,
+): Promise<MarketingInvestment[]> {
+  const workbook = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+
+  if (!workbook.length) {
+    return [];
+  }
+
+  const sheets = await readXlsxFile(workbook);
+  const selectedSheet = sheets.find((sheet) =>
+    normalizeHeader(sheet.sheet).includes("INVESTIMENTO_MARKETING"),
+  );
+
+  if (!selectedSheet) {
+    return [];
+  }
+
+  const [headerRow, ...dataRows] = selectedSheet.data;
+
+  if (!headerRow) {
+    return [];
+  }
+
+  const headers = headerRow.map((header) => normalizeHeader(String(header ?? "")));
+  const normalizedRows = dataRows.map((row) =>
+    Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])),
+  );
+
+  return normalizedRows
+    .map(rowToMarketingInvestment)
+    .filter((investment): investment is MarketingInvestment => Boolean(investment));
+}
+
+function rowToMarketingInvestment(row: SheetRow): MarketingInvestment | null {
+  const empresa = normalizeLeadSource(readRowText(row, ["EMPRESA", "AGENCIA", "AGÊNCIA"]));
+  const semanal = parseCurrency(readRowValue(row, ["SEMANAL", "SEMANA"]));
+  const mensalidade = parseCurrency(
+    readRowValue(row, ["MENSALIDADE", "MENSAL", "INVESTIMENTO MENSAL"]),
+  );
+
+  if (!empresa || empresa === "Não informado") {
+    return null;
+  }
+
+  return {
+    empresa,
+    semanal,
+    mensalidade,
+  };
 }
 
 function rowToLead(row: SheetRow, sheetName = ""): LeadMarketing | null {
