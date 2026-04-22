@@ -330,15 +330,29 @@ async function parseLeadsWorkbook(buffer: ArrayBuffer | Buffer): Promise<LeadMar
   );
 
   return normalizedRows
-    .map(rowToLead)
+    .map((row) => rowToLead(row, selectedSheet.sheet))
     .filter((lead): lead is LeadMarketing => Boolean(lead))
     .sort((a, b) => b.dataRecebimento.localeCompare(a.dataRecebimento));
 }
 
-function rowToLead(row: SheetRow): LeadMarketing | null {
+function rowToLead(row: SheetRow, sheetName = ""): LeadMarketing | null {
   const nome = readRowText(row, ["NOME", "CLIENTE"]);
   const whatsapp = readRowText(row, ["WHATSAPP", "TELEFONE", "CELULAR"]);
   const cpf = readRowText(row, ["CPF"]);
+  const rawSource = readRowText(row, [
+    "AGENCIA",
+    "AGENCIA MARKETING",
+    "AGENCIA DE MARKETING",
+    "AGÊNCIA",
+    "AGÊNCIA MARKETING",
+    "AGÊNCIA DE MARKETING",
+    "EMPRESA",
+    "EMPRESA MARKETING",
+    "EMPRESA DE MARKETING",
+    "ORIGEM",
+    "FONTE",
+    "SOURCE",
+  ]);
   const dataRecebimento =
     parseDateTime(
       readRowValue(row, ["DATA RECEBIMENTO", "DATA DO RECEBIMENTO", "CRIADO EM"]),
@@ -370,7 +384,7 @@ function rowToLead(row: SheetRow): LeadMarketing | null {
     caso: readRowText(row, ["CASO", "EXPLIQUE UM POUCO DO SEU CASO"]),
     emailDestino: readRowText(row, ["EMAIL DESTINO", "DESTINO", "PARA"]),
     assunto: readRowText(row, ["ASSUNTO"]),
-    origem: normalizeLeadSource(readRowText(row, ["ORIGEM", "FONTE", "SOURCE"])),
+    origem: normalizeLeadSource(rawSource || sheetName),
     dataFormulario:
       parseDateTime(readRowValue(row, ["DATA FORMULARIO", "DATA"])) ??
       readRowText(row, ["DATA FORMULARIO", "DATA"]),
@@ -482,6 +496,10 @@ function parseDateTime(value: unknown): string | null {
 
 function normalizeLeadSource(value: string): string {
   const normalized = normalizeHeader(value);
+
+  if (!normalized || normalized.includes("EXPORT_FORMAT") || normalized.includes("GID=")) {
+    return "Não informado";
+  }
 
   if (normalized.includes("SOUL")) {
     return "Soul";

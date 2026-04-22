@@ -13,7 +13,8 @@ type Venda = {
   equipe: Equipe;
 };
 
-type MarketingSource = "todos" | "soul" | "growper";
+type MarketingSource = "todos" | "soul" | "growper" | "sem_origem";
+type MarketingPeriodMode = "yesterday" | "today" | "month" | "range";
 
 type LeadMarketing = {
   dataRecebimento: string;
@@ -99,7 +100,7 @@ const marketingSourceOptions: Array<{ value: MarketingSource; label: string }> =
   { value: "growper", label: "Growper" },
 ];
 
-const waitingForData = "Aguardando dados";
+const waitingForData = "-";
 
 export default function Dashboard({
   initialView = "operacao",
@@ -929,8 +930,12 @@ function MarketingView({
   source: string;
 }) {
   const [sourceFilter, setSourceFilter] = useState<MarketingSource>("todos");
+  const [periodMode, setPeriodMode] = useState<MarketingPeriodMode>("month");
   const [monthFilter, setMonthFilter] = useState(() => getCurrentMonthKey());
-  const [dayFilter, setDayFilter] = useState("");
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const todayKey = getRelativeDateKey(0);
+  const yesterdayKey = getRelativeDateKey(-1);
   const dateFilteredLeads = leads.filter((lead) => {
     const leadDay = getDateKey(lead.dataRecebimento);
 
@@ -938,8 +943,20 @@ function MarketingView({
       return false;
     }
 
-    if (dayFilter) {
-      return leadDay === dayFilter;
+    if (periodMode === "today") {
+      return leadDay === todayKey;
+    }
+
+    if (periodMode === "yesterday") {
+      return leadDay === yesterdayKey;
+    }
+
+    if (periodMode === "range") {
+      const start = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeEnd : rangeStart;
+      const end = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeStart : rangeEnd;
+      const startsAfter = start ? leadDay >= start : true;
+      const endsBefore = end ? leadDay <= end : true;
+      return startsAfter && endsBefore;
     }
 
     return leadDay.startsWith(monthFilter);
@@ -949,27 +966,41 @@ function MarketingView({
       ? dateFilteredLeads
       : dateFilteredLeads.filter((lead) => getLeadSource(lead) === sourceFilter);
   const todayLeads = filteredLeads.filter((lead) => isToday(lead.dataRecebimento)).length;
-  const activeFinancing = filteredLeads.filter(
-    (lead) => lead.possuiFinanciamentoAtivo === true,
-  ).length;
-  const contactableLeads = filteredLeads.filter((lead) => hasContactInfo(lead)).length;
-  const qualificationRate = filteredLeads.length
-    ? Math.round((activeFinancing / filteredLeads.length) * 100)
-    : 0;
   const dailyRows = buildLeadDailyRows(filteredLeads);
-  const peakDay = dailyRows[0] ?? null;
-  const peakHour = getPeakHour(filteredLeads);
   const sourceInsights = marketingSourceOptions.slice(1).map((item) =>
     buildLeadSourceInsight(item.value, dateFilteredLeads),
   );
-  const bestSource = [...sourceInsights].sort((a, b) => b.total - a.total)[0] ?? null;
   const financials = buildMarketingFinancials(filteredLeads);
   const actionSummary = buildLeadActionSummary(filteredLeads);
-  const sourceCounts = {
-    todos: dateFilteredLeads.length,
-    soul: dateFilteredLeads.filter((lead) => getLeadSource(lead) === "soul").length,
-    growper: dateFilteredLeads.filter((lead) => getLeadSource(lead) === "growper").length,
-  };
+  const operationalMetrics = buildMarketingOperationalMetrics(filteredLeads, actionSummary);
+  const sourceCounts = Object.fromEntries(
+    marketingSourceOptions.map((item) => [
+      item.value,
+      item.value === "todos"
+        ? dateFilteredLeads.length
+        : dateFilteredLeads.filter((lead) => getLeadSource(lead) === item.value).length,
+    ]),
+  ) as Record<MarketingSource, number>;
+  const periodSummary = getMarketingPeriodSummary(
+    periodMode,
+    monthFilter,
+    rangeStart,
+    rangeEnd,
+    todayKey,
+    yesterdayKey,
+  );
+  const sourceSummary =
+    sourceFilter === "todos"
+      ? "Todos os parceiros"
+      : marketingSourceOptions.find((item) => item.value === sourceFilter)?.label ?? "Parceiro";
+
+  function clearMarketingFilters() {
+    setPeriodMode("month");
+    setMonthFilter(getCurrentMonthKey());
+    setRangeStart("");
+    setRangeEnd("");
+    setSourceFilter("todos");
+  }
 
   return (
     <div className="marketingScreen">
@@ -979,42 +1010,81 @@ function MarketingView({
           <h2>Marketing</h2>
           <p>{source}</p>
         </div>
-        <div className="marketingControls">
-          <div className="dateFilters" aria-label="Filtros de data">
-            <label>
-              Mês
-              <input
-                type="month"
-                value={monthFilter}
-                onChange={(event) => {
-                  setMonthFilter(event.target.value || getCurrentMonthKey());
-                  setDayFilter("");
-                }}
-              />
-            </label>
-            <label>
-              Dia
-              <input
-                type="date"
-                value={dayFilter}
-                onChange={(event) => setDayFilter(event.target.value)}
-              />
-            </label>
-            <button type="button" onClick={() => setDayFilter(getRelativeDateKey(0))}>
-              Hoje
-            </button>
-            <button type="button" onClick={() => setDayFilter(getRelativeDateKey(-1))}>
-              Ontem
-            </button>
-            <button type="button" onClick={() => setDayFilter("")}>
-              Ver mês
-            </button>
-          </div>
-          <div className="filterTabs marketingTabs">
+        <div className="marketingControls" aria-label="Controles de filtro do marketing">
+          <div className="marketingFilterToolbar">
+            <div className="marketingFilterGroup">
+              <span className="filterGroupLabel">Período rápido</span>
+              <div className="quickPeriodTabs">
+              {[
+                { mode: "yesterday" as const, label: "Ontem" },
+                { mode: "today" as const, label: "Hoje" },
+                { mode: "month" as const, label: "Este mês" },
+              ].map((item) => (
+                <button
+                  className={periodMode === item.mode ? "active" : ""}
+                  key={item.mode}
+                  title={`Filtrar por ${item.label.toLowerCase()}`}
+                  type="button"
+                  onClick={() => setPeriodMode(item.mode)}
+                >
+                  {item.label}
+                </button>
+              ))}
+              </div>
+            </div>
+
+            <div className="marketingFilterGroup marketingDateGroup">
+              <span className="filterGroupLabel">Datas</span>
+              <div className="periodPickers">
+              <label>
+                <span>Mês</span>
+                <input
+                  title="Selecionar mês"
+                  type="month"
+                  value={monthFilter}
+                  onChange={(event) => {
+                    setMonthFilter(event.target.value || getCurrentMonthKey());
+                    setPeriodMode("month");
+                  }}
+                />
+              </label>
+              <label>
+                <span>Data inicial</span>
+                <input
+                  aria-label="Início do período"
+                  title="Data inicial"
+                  type="date"
+                  value={rangeStart}
+                  onChange={(event) => {
+                    setRangeStart(event.target.value);
+                    setPeriodMode("range");
+                  }}
+                />
+              </label>
+              <label>
+                <span>Data final</span>
+                <input
+                  aria-label="Fim do período"
+                  title="Data final"
+                  type="date"
+                  value={rangeEnd}
+                  onChange={(event) => {
+                    setRangeEnd(event.target.value);
+                    setPeriodMode("range");
+                  }}
+                />
+              </label>
+              </div>
+            </div>
+
+            <div className="marketingFilterGroup">
+              <span className="filterGroupLabel">Segmentação</span>
+              <div className="filterTabs marketingTabs">
             {marketingSourceOptions.map((item) => (
               <button
                 className={sourceFilter === item.value ? "active" : ""}
                 key={item.value}
+                title={`Ver ${item.label}`}
                 type="button"
                 onClick={() => setSourceFilter(item.value)}
               >
@@ -1022,125 +1092,156 @@ function MarketingView({
                 <span>{sourceCounts[item.value]}</span>
               </button>
             ))}
+              </div>
+            </div>
+
+            <div className="marketingFilterGroup marketingActionGroup">
+              <span className="filterGroupLabel">Ações</span>
+              <div className="filterActions">
+                <button className="filterClear" type="button" onClick={clearMarketingFilters}>
+                  Limpar filtros
+                </button>
+                <button
+                  className="filterApply"
+                  disabled
+                  title="Os filtros são aplicados automaticamente"
+                  type="button"
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
           </div>
+          <span className="periodSummary">
+            Exibindo: {periodSummary} | {sourceSummary}
+          </span>
         </div>
       </section>
 
-      <section className="marketingKpis">
-        <KpiCard
-          label="Leads recebidos"
-          value={String(filteredLeads.length)}
-          detail="Base captada"
-          tone="blue"
-        />
-        <KpiCard
-          label="Leads hoje"
-          value={String(todayLeads)}
-          detail="Entrada do dia"
-          tone="green"
-        />
-        <KpiCard
-          label="Qualificados"
-          value={String(activeFinancing)}
-          detail={`${qualificationRate}% com financiamento ativo`}
-          tone="yellow"
-        />
-        <KpiCard
-          label="Com contato"
-          value={String(contactableLeads)}
-          detail={`${filteredLeads.length - contactableLeads} precisam revisão`}
-          tone="red"
-        />
+      <section className="marketingSection">
+        <div className="marketingSectionHeader">
+          <span>Funil principal</span>
+          <p>Volume, andamento e conversão do período selecionado.</p>
+        </div>
+        <div className="marketingKpis marketingKpisPrimary">
+          <KpiCard
+            label="Leads recebidos"
+            value={String(filteredLeads.length)}
+            detail="Base captada"
+            tone="blue"
+          />
+          <KpiCard
+            label="Leads hoje"
+            value={String(todayLeads)}
+            detail="Entrada do dia"
+            tone="green"
+          />
+          <KpiCard
+            label="Em contato"
+            value={formatOptionalNumber(actionSummary.actioned, actionSummary.hasActionData)}
+            detail="Leads trabalhados"
+            tone="yellow"
+          />
+          <KpiCard
+            label="Convertidos"
+            value={formatOptionalNumber(financials.convertedLeads, financials.hasConversion)}
+            detail="Vendas identificadas"
+            tone="green"
+          />
+          <KpiCard
+            label="Taxa de conversão"
+            value={formatOptionalPercent(financials.conversionRate, financials.hasConversion)}
+            detail="Conversão do período"
+            tone="yellow"
+          />
+          <KpiCard
+            label="Investimento"
+            value={formatOptionalCurrency(financials.investment, financials.hasInvestment)}
+            detail="Total por agência"
+            tone="blue"
+          />
+        </div>
       </section>
 
-      <section className="marketingInsightGrid">
-        <MiniMetric
-          label="Melhor origem"
-          value={bestSource && bestSource.total > 0 ? bestSource.label : "-"}
-          detail={bestSource ? `${bestSource.total} leads no período` : "Sem leads"}
-        />
-        <MiniMetric
-          label="Pico de captação"
-          value={peakDay ? formatDayMonth(peakDay.date) : "-"}
-          detail={peakDay ? `${peakDay.total} leads` : "Sem movimento"}
-        />
-        <MiniMetric
-          label="Horário forte"
-          value={peakHour ? `${peakHour.hour}h` : "-"}
-          detail={peakHour ? `${peakHour.total} leads recebidos` : "Sem horário"}
-        />
-        <MiniMetric
-          label="Média diária"
-          value={dailyRows.length ? (filteredLeads.length / dailyRows.length).toFixed(1) : "0"}
-          detail="Leads por dia com movimento"
-        />
+      <section className="marketingSection">
+        <div className="marketingSectionHeader">
+          <span>Eficiência</span>
+          <p>Custos e produtividade para acompanhar qualidade do investimento.</p>
+        </div>
+        <div className="marketingFinanceGrid marketingSecondaryGrid">
+          <MiniMetric
+            label="Custo por lead"
+            value={formatOptionalCurrency(financials.cpl, financials.hasInvestment)}
+            detail="Investimento / leads"
+          />
+          <MiniMetric
+            label="Custo por venda"
+            value={formatOptionalCurrency(financials.cpa, financials.hasCpa)}
+            detail="Investimento / convertidos"
+          />
+          <MiniMetric
+            label="Ticket médio"
+            value={formatOptionalCurrency(financials.averageTicket, financials.hasAverageTicket)}
+            detail="Receita / convertidos"
+          />
+          <MiniMetric
+            label="ROI"
+            value={formatOptionalPercent(financials.roi, financials.hasRoi)}
+            detail="Retorno sobre investimento"
+          />
+          <MiniMetric
+            label="Tempo médio contato"
+            value={formatOptionalHours(operationalMetrics.averageContactHours)}
+            detail="Recebimento até acionamento"
+          />
+          <MiniMetric
+            label="% leads trabalhados"
+            value={formatOptionalPercent(operationalMetrics.workedRate, actionSummary.hasActionData)}
+            detail="Acionados sobre recebidos"
+          />
+        </div>
       </section>
 
-      <section className="marketingFinanceGrid">
-        <KpiCard
-          label="Investimento"
-          value={formatOptionalCurrency(financials.investment, financials.hasInvestment)}
-          detail="Total informado por agência"
-          tone="blue"
-        />
-        <KpiCard
-          label="Receita"
-          value={formatOptionalCurrency(financials.revenue, financials.hasRevenue)}
-          detail="Retorno de vendas fechadas"
-          tone="green"
-        />
-        <KpiCard
-          label="ROI"
-          value={formatOptionalPercent(financials.roi, financials.hasRoi)}
-          detail="Retorno sobre investimento"
-          tone="yellow"
-        />
-        <KpiCard
-          label="CPL"
-          value={formatOptionalCurrency(financials.cpl, financials.hasInvestment)}
-          detail="Custo por lead"
-          tone="red"
-        />
-        <KpiCard
-          label="CPA"
-          value={formatOptionalCurrency(financials.cpa, financials.hasCpa)}
-          detail="Custo por aquisição"
-          tone="blue"
-        />
-        <KpiCard
-          label="Conversão"
-          value={formatOptionalPercent(financials.conversionRate, financials.hasConversion)}
-          detail="Leads vendidos sobre recebidos"
-          tone="green"
-        />
-        <KpiCard
-          label="Acionados"
-          value={actionSummary.hasActionData ? String(actionSummary.actioned) : waitingForData}
-          detail="Leads já trabalhados"
-          tone="yellow"
-        />
-        <KpiCard
-          label="Não acionados"
-          value={actionSummary.hasActionData ? String(actionSummary.notActioned) : waitingForData}
-          detail="Pendência operacional"
-          tone="red"
-        />
+      <section className="marketingSection">
+        <div className="marketingSectionHeader">
+          <span>Análise</span>
+          <p>Tendência diária, origem dos leads e visão resumida do funil.</p>
+        </div>
+        <div className="marketingAnalysisGrid">
+          <LeadDailyPanel rows={dailyRows} />
+          <LeadSourcePanel insights={sourceInsights} total={dateFilteredLeads.length} />
+          <LeadFunnelPanel
+            received={filteredLeads.length}
+            worked={actionSummary.actioned}
+            converted={financials.convertedLeads}
+            hasWorked={actionSummary.hasActionData}
+            hasConverted={financials.hasConversion}
+          />
+        </div>
       </section>
 
-      <section className="marketingGrid">
-        <LeadTable leads={filteredLeads} />
-        <LeadSourcePanel insights={sourceInsights} total={dateFilteredLeads.length} />
-      </section>
-
-      <section className="marketingGrid marketingGridWide">
-        <LeadDailyPanel rows={dailyRows} />
-        <LeadQualityPanel leads={filteredLeads} />
+      <section className="marketingSection">
+        <div className="marketingSectionHeader">
+          <span>Operação</span>
+          <p>Consulta dos leads recentes e apoio para acompanhamento por parceiro.</p>
+        </div>
+        <div className="marketingOperationalGrid">
+          <LeadTable leads={filteredLeads} />
+          <MarketingSummaryPanel
+            leads={filteredLeads.length}
+            averageDaily={dailyRows.length ? filteredLeads.length / dailyRows.length : 0}
+            notActioned={actionSummary.notActioned}
+            hasActionData={actionSummary.hasActionData}
+          />
+        </div>
       </section>
 
       <MarketingGlossary />
     </div>
   );
 }
+
+
 
 function LeadTable({ leads }: { leads: LeadMarketing[] }) {
   return (
@@ -1205,9 +1306,7 @@ function LeadSourcePanel({
             <div className="teamRow" key={source.value}>
               <div>
                 <strong>{source.label}</strong>
-                <small>
-                  {source.qualified} qualificados / {source.contactable} com contato
-                </small>
+                <small>{pct.toFixed(1)}% dos leads no período</small>
               </div>
               <div className="teamTrack">
                 <i style={{ width: `${Math.max(pct, source.total > 0 ? 4 : 0)}%` }} />
@@ -1221,11 +1320,97 @@ function LeadSourcePanel({
   );
 }
 
+function LeadFunnelPanel({
+  received,
+  worked,
+  converted,
+  hasWorked,
+  hasConverted,
+}: {
+  received: number;
+  worked: number;
+  converted: number;
+  hasWorked: boolean;
+  hasConverted: boolean;
+}) {
+  const rows = [
+    { label: "Recebidos", value: received, hasData: true },
+    { label: "Trabalhados", value: worked, hasData: hasWorked },
+    { label: "Convertidos", value: converted, hasData: hasConverted },
+  ];
+  const max = Math.max(received, worked, converted, 1);
+
+  return (
+    <section className="managementPanel marketingFunnelPanel">
+      <div className="sectionHeader">
+        <h2>Funil</h2>
+        <span>Recebidos até venda</span>
+      </div>
+      <div className="funnelRows">
+        {rows.map((row) => {
+          const width = row.hasData ? Math.max((row.value / max) * 100, row.value ? 4 : 0) : 0;
+
+          return (
+            <div className="funnelRow" key={row.label}>
+              <div>
+                <strong>{row.label}</strong>
+                <span>{row.hasData ? row.value : waitingForData}</span>
+              </div>
+              <div className="teamTrack">
+                <i style={{ width: `${width}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MarketingSummaryPanel({
+  leads,
+  averageDaily,
+  notActioned,
+  hasActionData,
+}: {
+  leads: number;
+  averageDaily: number;
+  notActioned: number;
+  hasActionData: boolean;
+}) {
+  return (
+    <section className="managementPanel">
+      <div className="sectionHeader">
+        <h2>Acompanhamento</h2>
+        <span>Resumo operacional</span>
+      </div>
+      <div className="marketingSummaryRows">
+        <MiniMetric
+          label="Base filtrada"
+          value={String(leads)}
+          detail="Leads no período"
+        />
+        <MiniMetric
+          label="Média diária"
+          value={averageDaily ? averageDaily.toFixed(1) : "0"}
+          detail="Dias com movimento"
+        />
+        <MiniMetric
+          label="Pendentes"
+          value={formatOptionalNumber(notActioned, hasActionData)}
+          detail="Sem acionamento registrado"
+        />
+      </div>
+    </section>
+  );
+}
+
 type LeadDailyRow = {
   date: string;
   total: number;
   soul: number;
   growper: number;
+  converted: number;
 };
 
 type LeadSourceInsight = {
@@ -1256,7 +1441,7 @@ function LeadDailyPanel({ rows }: { rows: LeadDailyRow[] }) {
               </div>
               <strong>{row.total}</strong>
               <small>
-                Soul {row.soul} / Growper {row.growper}
+                Soul {row.soul} / Growper {row.growper} / Conv. {row.converted}
               </small>
             </div>
           ))
@@ -1332,7 +1517,7 @@ function getLeadSource(lead: LeadMarketing): MarketingSource {
     return "growper";
   }
 
-  return "todos";
+  return "sem_origem";
 }
 
 function buildMarketingFinancials(leads: LeadMarketing[]) {
@@ -1350,6 +1535,7 @@ function buildMarketingFinancials(leads: LeadMarketing[]) {
   const hasConversion = leads.some((lead) => lead.vendeu !== null);
   const hasCpa = hasInvestment && convertedLeads > 0;
   const hasRoi = hasInvestment && hasRevenue;
+  const hasAverageTicket = hasRevenue && convertedLeads > 0;
 
   return {
     investment,
@@ -1357,12 +1543,15 @@ function buildMarketingFinancials(leads: LeadMarketing[]) {
     roi: hasRoi ? ((revenue - investment) / investment) * 100 : null,
     cpl: leads.length > 0 ? investment / leads.length : null,
     cpa: hasCpa ? investment / convertedLeads : null,
+    averageTicket: hasAverageTicket ? revenue / convertedLeads : null,
     conversionRate: leads.length > 0 ? (convertedLeads / leads.length) * 100 : null,
+    convertedLeads,
     hasInvestment,
     hasRevenue,
     hasConversion,
     hasCpa,
     hasRoi,
+    hasAverageTicket,
   };
 }
 
@@ -1374,6 +1563,36 @@ function buildLeadActionSummary(leads: LeadMarketing[]) {
     hasActionData: rowsWithActionData.length > 0,
     actioned,
     notActioned: rowsWithActionData.length - actioned,
+  };
+}
+
+function buildMarketingOperationalMetrics(
+  leads: LeadMarketing[],
+  actionSummary: ReturnType<typeof buildLeadActionSummary>,
+) {
+  const contactIntervals = leads
+    .map((lead) => {
+      const receivedAt = new Date(lead.dataRecebimento).getTime();
+      const actionedAt = new Date(lead.dataAcionamento).getTime();
+
+      if (
+        Number.isNaN(receivedAt) ||
+        Number.isNaN(actionedAt) ||
+        actionedAt < receivedAt
+      ) {
+        return null;
+      }
+
+      return (actionedAt - receivedAt) / 36e5;
+    })
+    .filter((value): value is number => typeof value === "number");
+  const averageContactHours = contactIntervals.length
+    ? contactIntervals.reduce((total, value) => total + value, 0) / contactIntervals.length
+    : null;
+
+  return {
+    averageContactHours,
+    workedRate: leads.length ? (actionSummary.actioned / leads.length) * 100 : null,
   };
 }
 
@@ -1398,6 +1617,18 @@ function formatOptionalCurrency(value: number | null, hasData: boolean) {
 
 function formatOptionalPercent(value: number | null, hasData: boolean) {
   return hasData && typeof value === "number" ? `${value.toFixed(1)}%` : waitingForData;
+}
+
+function formatOptionalNumber(value: number, hasData: boolean) {
+  return hasData ? String(value) : waitingForData;
+}
+
+function formatOptionalHours(value: number | null) {
+  if (typeof value !== "number") {
+    return waitingForData;
+  }
+
+  return value >= 24 ? `${(value / 24).toFixed(1)} dias` : `${value.toFixed(1)}h`;
 }
 
 function buildLeadSourceInsight(
@@ -1428,7 +1659,7 @@ function buildLeadDailyRows(leads: LeadMarketing[]): LeadDailyRow[] {
       return;
     }
 
-    const row = rows.get(date) ?? { date, total: 0, soul: 0, growper: 0 };
+    const row = rows.get(date) ?? { date, total: 0, soul: 0, growper: 0, converted: 0 };
     const source = getLeadSource(lead);
     row.total += 1;
 
@@ -1438,6 +1669,10 @@ function buildLeadDailyRows(leads: LeadMarketing[]): LeadDailyRow[] {
 
     if (source === "growper") {
       row.growper += 1;
+    }
+
+    if (lead.vendeu === true) {
+      row.converted += 1;
     }
 
     rows.set(date, row);
@@ -1542,6 +1777,64 @@ function getDateKey(value: string) {
     String(date.getMonth() + 1).padStart(2, "0"),
     String(date.getDate()).padStart(2, "0"),
   ].join("-");
+}
+
+function getMarketingPeriodSummary(
+  mode: MarketingPeriodMode,
+  monthKey: string,
+  rangeStart: string,
+  rangeEnd: string,
+  todayKey: string,
+  yesterdayKey: string,
+) {
+  if (mode === "today") {
+    return `Hoje: ${formatDateKeyLabel(todayKey)}`;
+  }
+
+  if (mode === "yesterday") {
+    return `Ontem: ${formatDateKeyLabel(yesterdayKey)}`;
+  }
+
+  if (mode === "range") {
+    const start = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeEnd : rangeStart;
+    const end = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeStart : rangeEnd;
+
+    if (start && end) {
+      return `${formatDateKeyLabel(start)} até ${formatDateKeyLabel(end)}`;
+    }
+
+    if (start) {
+      return `A partir de ${formatDateKeyLabel(start)}`;
+    }
+
+    if (end) {
+      return `Até ${formatDateKeyLabel(end)}`;
+    }
+
+    return "Período personalizado";
+  }
+
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 1, 1);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Mês selecionado";
+  }
+
+  return date.toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatDateKeyLabel(dateKey: string) {
+  const [year, month, day] = dateKey.split("-");
+
+  if (!year || !month || !day) {
+    return "-";
+  }
+
+  return `${day}/${month}/${year}`;
 }
 
 function FutureView({ title }: { title: string }) {

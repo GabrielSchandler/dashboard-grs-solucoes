@@ -661,18 +661,66 @@ button {
 
 .marketingControls {
   display: grid;
-  justify-items: end;
+  gap: 8px;
+  border: 1px solid #242424;
+  border-radius: 8px;
+  background: #0f0f0f;
+  padding: 12px;
+}
+
+.marketingFilterToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: flex-end;
   gap: 10px;
 }
 
-.dateFilters {
+.marketingFilterGroup {
+  display: grid;
+  gap: 5px;
+  align-content: end;
+  padding-left: 10px;
+  border-left: 1px solid #292929;
+}
+
+.marketingFilterGroup:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.marketingActionGroup {
+  margin-left: auto;
+}
+
+.filterGroupLabel {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.quickPeriodTabs,
+.periodPickers,
+.filterActions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
 }
 
-.dateFilters label {
+.quickPeriodTabs {
+  border: 1px solid #2c2c2c;
+  border-radius: 8px;
+  background: #0b0b0b;
+  padding: 4px;
+}
+
+.periodPickers {
+  align-items: end;
+}
+
+.periodPickers label {
   display: grid;
   gap: 4px;
   color: var(--muted);
@@ -681,28 +729,77 @@ button {
   text-transform: uppercase;
 }
 
-.dateFilters input,
-.dateFilters button {
-  min-height: 34px;
+.periodPickers input,
+.quickPeriodTabs button,
+.filterActions button {
+  min-height: 36px;
   border: 1px solid #303030;
   border-radius: 6px;
   background: #0c0c0c;
   color: var(--text);
-  padding: 7px 10px;
+  color-scheme: dark;
+  padding: 7px 11px;
 }
 
-.dateFilters button {
-  align-self: end;
+.periodPickers input {
+  width: 132px;
+}
+
+.periodPickers input[type="date"]::-webkit-calendar-picker-indicator,
+.periodPickers input[type="month"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(1) brightness(1.8);
+  opacity: 1;
+}
+
+.quickPeriodTabs button,
+.filterActions button {
   color: var(--soft);
   font-size: 13px;
+  font-weight: 800;
   transition:
+    background 180ms ease,
     border-color 180ms ease,
     color 180ms ease;
 }
 
-.dateFilters button:hover {
+.quickPeriodTabs button:hover,
+.quickPeriodTabs button.active,
+.filterActions button:hover {
   border-color: #484848;
   color: white;
+}
+
+.quickPeriodTabs button.active {
+  border-color: rgba(224, 32, 32, 0.75);
+  background: linear-gradient(135deg, rgba(224, 32, 32, 0.82), rgba(116, 25, 25, 0.8));
+  box-shadow: 0 0 0 1px rgba(224, 32, 32, 0.18);
+}
+
+.filterClear {
+  background: #111111;
+}
+
+.filterApply {
+  border-color: rgba(224, 32, 32, 0.56);
+  background: var(--red);
+  color: white;
+}
+
+.filterApply:disabled {
+  cursor: not-allowed;
+  border-color: #303030;
+  background: #151515;
+  color: #777777;
+}
+
+.periodSummary {
+  border-top: 1px solid #242424;
+  padding-top: 8px;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
 }
 
 .marketingTabs {
@@ -713,6 +810,9 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 36px;
+  justify-content: center;
+  min-width: 82px;
 }
 
 .marketingTabs span {
@@ -729,22 +829,80 @@ button {
   color: white;
 }
 
+.marketingSection {
+  display: grid;
+  gap: 8px;
+}
+
+.marketingSectionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 2px 2px 0;
+}
+
+.marketingSectionHeader span {
+  color: white;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.marketingSectionHeader p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
 .marketingKpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 
-.marketingInsightGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+.marketingKpisPrimary .kpiCard {
+  min-height: 174px;
 }
 
+.marketingKpisPrimary .kpiCard strong {
+  font-size: 27px;
+}
+
+.marketingInsightGrid,
 .marketingFinanceGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
+}
+
+.marketingSecondaryGrid .miniMetric {
+  min-height: 112px;
+  display: grid;
+  align-content: space-between;
+}
+
+.marketingAnalysisGrid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.marketingAnalysisGrid .dailyPanel {
+  grid-column: span 6;
+}
+
+.marketingAnalysisGrid .managementPanel {
+  grid-column: span 3;
+}
+
+.marketingOperationalGrid {
+  display: grid;
+  grid-template-columns: minmax(640px, 8fr) minmax(300px, 4fr);
+  gap: 12px;
+  align-items: start;
 }
 
 .marketingGrid {
@@ -761,7 +919,41 @@ button {
 }
 
 .leadDailyRows .dailyRow {
-  grid-template-columns: 58px minmax(0, 1fr) 56px 158px;
+  grid-template-columns: 58px minmax(0, 1fr) 56px 198px;
+}
+
+.funnelRows,
+.marketingSummaryRows {
+  display: grid;
+  gap: 10px;
+}
+
+.funnelRow {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid #232323;
+  padding-bottom: 10px;
+}
+
+.funnelRow:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.funnelRow div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.funnelRow strong {
+  color: white;
+  font-size: 14px;
+}
+
+.funnelRow span {
+  color: white;
+  font-weight: 800;
 }
 
 .qualityRows {
@@ -1536,16 +1728,41 @@ button {
   .marketingGridWide,
   .marketingKpis,
   .marketingInsightGrid,
-  .marketingFinanceGrid {
+  .marketingFinanceGrid,
+  .marketingAnalysisGrid,
+  .marketingOperationalGrid {
     grid-template-columns: 1fr;
   }
 
-  .marketingControls {
-    justify-items: stretch;
+  .marketingAnalysisGrid .dailyPanel,
+  .marketingAnalysisGrid .managementPanel {
+    grid-column: auto;
   }
 
-  .dateFilters,
+  .marketingControls {
+    align-items: stretch;
+  }
+
+  .marketingFilterToolbar {
+    justify-content: flex-start;
+  }
+
+  .marketingSectionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .marketingSectionHeader p {
+    text-align: left;
+  }
+
   .marketingTabs {
+    justify-content: flex-start;
+  }
+
+  .quickPeriodTabs,
+  .periodPickers,
+  .filterActions {
     justify-content: flex-start;
   }
 
@@ -1631,6 +1848,37 @@ button {
 
   .viewNav button {
     width: 100%;
+  }
+
+  .periodPickers,
+  .periodPickers label,
+  .marketingFilterGroup,
+  .filterActions {
+    width: 100%;
+  }
+
+  .periodPickers input,
+  .quickPeriodTabs button,
+  .filterActions button,
+  .marketingTabs button {
+    width: 100%;
+  }
+
+  .marketingFilterToolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .marketingFilterGroup {
+    border-left: 0;
+    border-top: 1px solid #292929;
+    padding-left: 0;
+    padding-top: 10px;
+  }
+
+  .marketingFilterGroup:first-child {
+    border-top: 0;
+    padding-top: 0;
   }
 
   .rankingColumns,
