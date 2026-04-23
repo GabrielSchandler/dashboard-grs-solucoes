@@ -1219,8 +1219,11 @@ function MarketingView({
           />
           <KpiCard
             label="Investimento"
-            value={formatOptionalCurrency(financials.dailyInvestment, financials.hasDailyInvestment)}
-            detail="Média diária por agência"
+            value={formatOptionalCurrency(financials.investment, financials.hasInvestment)}
+            detail={`Média diária ${formatOptionalCurrency(
+              financials.dailyInvestment,
+              financials.hasDailyInvestment,
+            )}`}
             tone="blue"
           />
         </div>
@@ -1622,7 +1625,6 @@ function buildMarketingFinancials(
   periodDates: string[],
   periodMode: MarketingPeriodMode,
 ) {
-  const referenceDate = periodDates[periodDates.length - 1] ?? getRelativeDateKey(0);
   const classifiedInvestments = investments.map((investment) =>
     calculateInvestmentForPeriod(investment, periodDates, periodMode),
   );
@@ -1632,15 +1634,13 @@ function buildMarketingFinancials(
   const weeklyInvestment = classifiedInvestments.reduce((total, investment) => {
     return total + investment.weeklyPortion;
   }, 0);
-  const dailyInvestment = investments.reduce((total, investment) => {
-    return total + calculateDailyInvestment(investment, referenceDate);
-  }, 0);
   const leadInvestmentValues = leads
     .map((lead) => lead.investimentoAgencia)
     .filter((value): value is number => typeof value === "number" && value > 0);
   const revenueValues = sales.map((venda) => venda.meta).filter((value) => value > 0);
   const convertedLeads = sales.length;
   const plannedInvestment = monthlyInvestment + weeklyInvestment;
+  const dailyInvestment = periodDates.length > 0 ? plannedInvestment / periodDates.length : 0;
   const leadBasedInvestment = leadInvestmentValues.reduce((total, value) => total + value, 0);
   const investment = plannedInvestment > 0 ? plannedInvestment : leadBasedInvestment;
   const revenue = revenueValues.reduce((total, value) => total + value, 0);
@@ -1758,7 +1758,8 @@ function calculateInvestmentForPeriod(
   if (kind === "monthly") {
     const monthKey = investment.data.slice(0, 7);
     const matchingDays = periodDates.filter((dateKey) => dateKey.startsWith(monthKey)).length;
-    const monthlyPortion = matchingDays > 0 ? investment.valor : 0;
+    const monthlyPortion =
+      matchingDays > 0 ? (investment.valor / getDaysInMonth(investment.data)) * matchingDays : 0;
 
     return {
       monthlyPortion,
@@ -1767,7 +1768,9 @@ function calculateInvestmentForPeriod(
     };
   }
 
-  const weeklyPortion = periodDates.includes(investment.data) ? investment.valor : 0;
+  const weeklyPortion = periodDates.reduce((total, dateKey) => {
+    return total + calculateDailyWeeklyPortion(investment, dateKey);
+  }, 0);
 
   return {
     monthlyPortion: 0,
@@ -1776,19 +1779,11 @@ function calculateInvestmentForPeriod(
   };
 }
 
-function calculateDailyInvestment(investment: MarketingInvestment, referenceDate: string) {
-  const kind = getMarketingInvestmentKind(investment);
-
-  if (kind === "monthly") {
-    return investment.data.slice(0, 7) === referenceDate.slice(0, 7)
-      ? investment.valor / getDaysInMonth(investment.data)
-      : 0;
-  }
-
+function calculateDailyWeeklyPortion(investment: MarketingInvestment, dateKey: string) {
   const start = new Date(`${investment.data}T00:00:00`);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  const reference = new Date(`${referenceDate}T00:00:00`);
+  const reference = new Date(`${dateKey}T00:00:00`);
 
   return reference >= start && reference <= end ? investment.valor / 7 : 0;
 }
