@@ -44,8 +44,9 @@ type LeadMarketing = {
 
 type MarketingInvestment = {
   empresa: string;
-  semanal: number;
-  mensalidade: number;
+  data: string;
+  valor: number;
+  observacao: string;
 };
 
 type ApiResponse = {
@@ -1612,11 +1613,14 @@ function buildMarketingFinancials(
   investments: MarketingInvestment[],
   periodDates: string[],
 ) {
-  const monthlyInvestment = investments.reduce((total, investment) => {
-    return total + calculateInvestmentForPeriod(investment, periodDates).monthlyPortion;
+  const classifiedInvestments = investments.map((investment) =>
+    calculateInvestmentForPeriod(investment, periodDates),
+  );
+  const monthlyInvestment = classifiedInvestments.reduce((total, investment) => {
+    return total + investment.monthlyPortion;
   }, 0);
-  const weeklyInvestment = investments.reduce((total, investment) => {
-    return total + calculateInvestmentForPeriod(investment, periodDates).weeklyPortion;
+  const weeklyInvestment = classifiedInvestments.reduce((total, investment) => {
+    return total + investment.weeklyPortion;
   }, 0);
   const leadInvestmentValues = leads
     .map((lead) => lead.investimentoAgencia)
@@ -1733,19 +1737,27 @@ function calculateInvestmentForPeriod(
   investment: MarketingInvestment,
   periodDates: string[],
 ) {
-  const totals = periodDates.reduce(
-    (acc, dateKey) => {
-      acc.monthlyPortion += investment.mensalidade / getDaysInMonth(dateKey);
-      acc.weeklyPortion += investment.semanal / 7;
-      return acc;
-    },
-    { monthlyPortion: 0, weeklyPortion: 0 },
-  );
+  const kind = getMarketingInvestmentKind(investment);
+
+  if (kind === "monthly") {
+    const monthKey = investment.data.slice(0, 7);
+    const matchingDays = periodDates.filter((dateKey) => dateKey.startsWith(monthKey)).length;
+    const monthlyPortion =
+      matchingDays > 0 ? (investment.valor / getDaysInMonth(investment.data)) * matchingDays : 0;
+
+    return {
+      monthlyPortion,
+      weeklyPortion: 0,
+      total: monthlyPortion,
+    };
+  }
+
+  const weeklyPortion = periodDates.includes(investment.data) ? investment.valor : 0;
 
   return {
-    monthlyPortion: totals.monthlyPortion,
-    weeklyPortion: totals.weeklyPortion,
-    total: totals.monthlyPortion + totals.weeklyPortion,
+    monthlyPortion: 0,
+    weeklyPortion,
+    total: weeklyPortion,
   };
 }
 
@@ -1818,6 +1830,16 @@ function buildLeadDailyRows(leads: LeadMarketing[]): LeadDailyRow[] {
   });
 
   return [...rows.values()].sort((a, b) => b.total - a.total);
+}
+
+function getMarketingInvestmentKind(investment: MarketingInvestment) {
+  const note = normalizeText(investment.observacao);
+
+  if (note.includes("mensal")) {
+    return "monthly";
+  }
+
+  return "weekly";
 }
 
 function getMarketingPeriodDates(

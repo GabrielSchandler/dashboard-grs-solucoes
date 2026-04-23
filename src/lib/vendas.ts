@@ -39,8 +39,9 @@ export type LeadMarketing = {
 
 export type MarketingInvestment = {
   empresa: string;
-  semanal: number;
-  mensalidade: number;
+  data: string;
+  valor: number;
+  observacao: string;
 };
 
 export type VendasResponse = {
@@ -381,19 +382,26 @@ async function parseMarketingInvestments(
 
 function rowToMarketingInvestment(row: SheetRow): MarketingInvestment | null {
   const empresa = normalizeLeadSource(readRowText(row, ["EMPRESA", "AGENCIA", "AGÊNCIA"]));
-  const semanal = parseCurrency(readRowValue(row, ["SEMANAL", "SEMANA"]));
-  const mensalidade = parseCurrency(
-    readRowValue(row, ["MENSALIDADE", "MENSAL", "INVESTIMENTO MENSAL"]),
-  );
+  const data =
+    parseDate(readRowValue(row, ["DATA", "COMPETENCIA", "COMPETÊNCIA"])) ??
+    parseMarketingInvestmentDate(readRowText(row, ["DATA", "COMPETENCIA", "COMPETÊNCIA"])) ??
+    "";
+  const valor = parseCurrency(readRowValue(row, ["VALOR", "INVESTIMENTO", "CUSTO"]));
+  const observacao = readRowText(row, ["OBS", "OBSERVACAO", "OBSERVAÇÃO", "TIPO"]);
 
   if (!empresa || empresa === "Não informado") {
     return null;
   }
 
+  if (!data || valor <= 0) {
+    return null;
+  }
+
   return {
     empresa,
-    semanal,
-    mensalidade,
+    data,
+    valor,
+    observacao,
   };
 }
 
@@ -630,6 +638,58 @@ function parseDate(value: unknown): string | null {
 
   if (isoDate) {
     return `${isoDate[1]}-${isoDate[2].padStart(2, "0")}-${isoDate[3].padStart(2, "0")}`;
+  }
+
+  return null;
+}
+
+function parseMarketingInvestmentDate(value: string): string | null {
+  const text = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+  if (!text) {
+    return null;
+  }
+
+  const ptMonths: Record<string, number> = {
+    jan: 1,
+    fev: 2,
+    mar: 3,
+    abr: 4,
+    mai: 5,
+    jun: 6,
+    jul: 7,
+    ago: 8,
+    set: 9,
+    out: 10,
+    nov: 11,
+    dez: 12,
+  };
+
+  const dayMonth = text.match(/^(\d{1,2})\/([a-z]{3})$/i);
+
+  if (dayMonth) {
+    const month = ptMonths[dayMonth[2].toLowerCase()];
+    const year = new Date().getFullYear();
+
+    if (month) {
+      return `${year}-${String(month).padStart(2, "0")}-${dayMonth[1].padStart(2, "0")}`;
+    }
+  }
+
+  const monthYear = text.match(/^([a-z]{3})\/(\d{2}|\d{4})$/i);
+
+  if (monthYear) {
+    const month = ptMonths[monthYear[1].toLowerCase()];
+    const rawYear = Number(monthYear[2]);
+    const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+
+    if (month) {
+      return `${year}-${String(month).padStart(2, "0")}-01`;
+    }
   }
 
   return null;
