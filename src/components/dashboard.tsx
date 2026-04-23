@@ -1018,13 +1018,21 @@ function MarketingView({
   );
   const filteredInvestments = filterMarketingInvestments(investments, sourceFilter);
   const sourceInsights = marketingSourceOptions.slice(1).map((item) =>
-    buildLeadSourceInsight(item.value, dateFilteredLeads, dateFilteredSales, investments, periodDates),
+    buildLeadSourceInsight(
+      item.value,
+      dateFilteredLeads,
+      dateFilteredSales,
+      investments,
+      periodDates,
+      periodMode,
+    ),
   );
   const financials = buildMarketingFinancials(
     filteredLeads,
     filteredSales,
     filteredInvestments,
     periodDates,
+    periodMode,
   );
   const actionSummary = buildLeadActionSummary(filteredLeads);
   const operationalMetrics = buildMarketingOperationalMetrics(filteredLeads, actionSummary);
@@ -1211,8 +1219,8 @@ function MarketingView({
           />
           <KpiCard
             label="Investimento"
-            value={formatOptionalCurrency(financials.investment, financials.hasInvestment)}
-            detail="Total por agência"
+            value={formatOptionalCurrency(financials.dailyInvestment, financials.hasDailyInvestment)}
+            detail="Média diária por agência"
             tone="blue"
           />
         </div>
@@ -1612,15 +1620,20 @@ function buildMarketingFinancials(
   sales: Venda[],
   investments: MarketingInvestment[],
   periodDates: string[],
+  periodMode: MarketingPeriodMode,
 ) {
+  const referenceDate = periodDates[periodDates.length - 1] ?? getRelativeDateKey(0);
   const classifiedInvestments = investments.map((investment) =>
-    calculateInvestmentForPeriod(investment, periodDates),
+    calculateInvestmentForPeriod(investment, periodDates, periodMode),
   );
   const monthlyInvestment = classifiedInvestments.reduce((total, investment) => {
     return total + investment.monthlyPortion;
   }, 0);
   const weeklyInvestment = classifiedInvestments.reduce((total, investment) => {
     return total + investment.weeklyPortion;
+  }, 0);
+  const dailyInvestment = investments.reduce((total, investment) => {
+    return total + calculateDailyInvestment(investment, referenceDate);
   }, 0);
   const leadInvestmentValues = leads
     .map((lead) => lead.investimentoAgencia)
@@ -1640,6 +1653,7 @@ function buildMarketingFinancials(
 
   return {
     investment,
+    dailyInvestment,
     weeklyInvestment,
     revenue,
     roi: hasRoi ? ((revenue - investment) / investment) * 100 : null,
@@ -1649,6 +1663,7 @@ function buildMarketingFinancials(
     conversionRate: leads.length > 0 ? (convertedLeads / leads.length) * 100 : null,
     convertedLeads,
     hasInvestment,
+    hasDailyInvestment: dailyInvestment > 0,
     hasRevenue,
     hasConversion,
     hasCpa,
@@ -1736,14 +1751,14 @@ function formatOptionalHours(value: number | null) {
 function calculateInvestmentForPeriod(
   investment: MarketingInvestment,
   periodDates: string[],
+  periodMode: MarketingPeriodMode,
 ) {
   const kind = getMarketingInvestmentKind(investment);
 
   if (kind === "monthly") {
     const monthKey = investment.data.slice(0, 7);
     const matchingDays = periodDates.filter((dateKey) => dateKey.startsWith(monthKey)).length;
-    const monthlyPortion =
-      matchingDays > 0 ? (investment.valor / getDaysInMonth(investment.data)) * matchingDays : 0;
+    const monthlyPortion = matchingDays > 0 ? investment.valor : 0;
 
     return {
       monthlyPortion,
@@ -1759,6 +1774,23 @@ function calculateInvestmentForPeriod(
     weeklyPortion,
     total: weeklyPortion,
   };
+}
+
+function calculateDailyInvestment(investment: MarketingInvestment, referenceDate: string) {
+  const kind = getMarketingInvestmentKind(investment);
+
+  if (kind === "monthly") {
+    return investment.data.slice(0, 7) === referenceDate.slice(0, 7)
+      ? investment.valor / getDaysInMonth(investment.data)
+      : 0;
+  }
+
+  const start = new Date(`${investment.data}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const reference = new Date(`${referenceDate}T00:00:00`);
+
+  return reference >= start && reference <= end ? investment.valor / 7 : 0;
 }
 
 function filterMarketingInvestments(
@@ -1778,6 +1810,7 @@ function buildLeadSourceInsight(
   sales: Venda[],
   investments: MarketingInvestment[],
   periodDates: string[],
+  periodMode: MarketingPeriodMode,
 ): LeadSourceInsight {
   const label =
     marketingSourceOptions.find((item) => item.value === source)?.label ?? source;
@@ -1792,10 +1825,10 @@ function buildLeadSourceInsight(
     qualified: sourceSales.length,
     contactable: sourceSales.reduce((total, venda) => total + venda.meta, 0),
     monthlyInvestment: sourceInvestments.reduce((total, investment) => {
-      return total + calculateInvestmentForPeriod(investment, periodDates).total;
+      return total + calculateInvestmentForPeriod(investment, periodDates, periodMode).total;
     }, 0),
     weeklyInvestment: sourceInvestments.reduce((total, investment) => {
-      return total + calculateInvestmentForPeriod(investment, periodDates).weeklyPortion;
+      return total + calculateInvestmentForPeriod(investment, periodDates, periodMode).weeklyPortion;
     }, 0),
   };
 }
