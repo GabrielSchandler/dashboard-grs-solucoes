@@ -11,6 +11,7 @@ type Venda = {
   cliente: string;
   meta: number;
   equipe: Equipe;
+  origem: string;
 };
 
 type MarketingSource = "todos" | "soul" | "growper" | "sem_origem";
@@ -218,6 +219,7 @@ function DashboardReady({
         <MarketingView
           investments={data.marketingInvestments}
           leads={data.leads}
+          vendas={data.vendas}
           source={data.leadsSource}
         />
       ) : null}
@@ -936,10 +938,12 @@ function LiveFeed({ vendas }: { vendas: Venda[] }) {
 function MarketingView({
   investments,
   leads,
+  vendas,
   source,
 }: {
   investments: MarketingInvestment[];
   leads: LeadMarketing[];
+  vendas: Venda[];
   source: string;
 }) {
   const [sourceFilter, setSourceFilter] = useState<MarketingSource>("todos");
@@ -978,13 +982,49 @@ function MarketingView({
     sourceFilter === "todos"
       ? dateFilteredLeads
       : dateFilteredLeads.filter((lead) => getLeadSource(lead) === sourceFilter);
+  const dateFilteredSales = vendas.filter((venda) => {
+    if (periodMode === "today") {
+      return venda.data === todayKey;
+    }
+
+    if (periodMode === "yesterday") {
+      return venda.data === yesterdayKey;
+    }
+
+    if (periodMode === "range") {
+      const start = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeEnd : rangeStart;
+      const end = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeStart : rangeEnd;
+      const startsAfter = start ? venda.data >= start : true;
+      const endsBefore = end ? venda.data <= end : true;
+      return startsAfter && endsBefore;
+    }
+
+    return venda.data.startsWith(monthFilter);
+  });
+  const filteredSales =
+    sourceFilter === "todos"
+      ? dateFilteredSales.filter((venda) => getVendaSource(venda) !== "sem_origem")
+      : dateFilteredSales.filter((venda) => getVendaSource(venda) === sourceFilter);
   const todayLeads = filteredLeads.filter((lead) => isToday(lead.dataRecebimento)).length;
   const dailyRows = buildLeadDailyRows(filteredLeads);
+  const periodDates = getMarketingPeriodDates(
+    periodMode,
+    monthFilter,
+    rangeStart,
+    rangeEnd,
+    todayKey,
+    yesterdayKey,
+  );
   const filteredInvestments = filterMarketingInvestments(investments, sourceFilter);
   const sourceInsights = marketingSourceOptions.slice(1).map((item) =>
-    buildLeadSourceInsight(item.value, dateFilteredLeads, investments),
+    buildLeadSourceInsight(item.value, dateFilteredLeads, dateFilteredSales, investments, periodDates),
   );
-  const financials = buildMarketingFinancials(filteredLeads, filteredInvestments);
+  const financials = buildMarketingFinancials(
+    filteredLeads,
+    filteredSales,
+    filteredInvestments,
+    periodDates,
+  );
   const actionSummary = buildLeadActionSummary(filteredLeads);
   const operationalMetrics = buildMarketingOperationalMetrics(filteredLeads, actionSummary);
   const sourceCounts = Object.fromEntries(
@@ -1321,7 +1361,7 @@ function LeadSourcePanel({
               <div>
                 <strong>{source.label}</strong>
                 <small>
-                  {pct.toFixed(1)}% dos leads / {compactCurrency.format(source.monthlyInvestment)} mês
+                  {source.qualified} vendas / {compactCurrency.format(source.contactable)} faturamento
                 </small>
               </div>
               <div className="teamTrack">
@@ -1552,31 +1592,44 @@ function getInvestmentSource(investment: MarketingInvestment): MarketingSource {
   return "sem_origem";
 }
 
+function getVendaSource(venda: Venda): MarketingSource {
+  const source = normalizeText(venda.origem);
+
+  if (source.includes("soul")) {
+    return "soul";
+  }
+
+  if (source.includes("growper") || source.includes("growth") || source.includes("grouper")) {
+    return "growper";
+  }
+
+  return "sem_origem";
+}
+
 function buildMarketingFinancials(
   leads: LeadMarketing[],
+  sales: Venda[],
   investments: MarketingInvestment[],
+  periodDates: string[],
 ) {
-  const monthlyInvestment = investments.reduce(
-    (total, investment) => total + investment.mensalidade,
-    0,
-  );
-  const weeklyInvestment = investments.reduce(
-    (total, investment) => total + investment.semanal,
-    0,
-  );
+  const monthlyInvestment = investments.reduce((total, investment) => {
+    return total + calculateInvestmentForPeriod(investment, periodDates).monthlyPortion;
+  }, 0);
+  const weeklyInvestment = investments.reduce((total, investment) => {
+    return total + calculateInvestmentForPeriod(investment, periodDates).weeklyPortion;
+  }, 0);
   const leadInvestmentValues = leads
     .map((lead) => lead.investimentoAgencia)
     .filter((value): value is number => typeof value === "number" && value > 0);
-  const revenueValues = leads
-    .map((lead) => lead.valorVenda)
-    .filter((value): value is number => typeof value === "number" && value > 0);
-  const convertedLeads = leads.filter((lead) => lead.vendeu === true).length;
-  const investment =
-    monthlyInvestment || leadInvestmentValues.reduce((total, value) => total + value, 0);
+  const revenueValues = sales.map((venda) => venda.meta).filter((value) => value > 0);
+  const convertedLeads = sales.length;
+  const plannedInvestment = monthlyInvestment + weeklyInvestment;
+  const leadBasedInvestment = leadInvestmentValues.reduce((total, value) => total + value, 0);
+  const investment = plannedInvestment > 0 ? plannedInvestment : leadBasedInvestment;
   const revenue = revenueValues.reduce((total, value) => total + value, 0);
   const hasInvestment = investment > 0;
   const hasRevenue = revenueValues.length > 0;
-  const hasConversion = leads.some((lead) => lead.vendeu !== null);
+  const hasConversion = sales.length > 0;
   const hasCpa = hasInvestment && convertedLeads > 0;
   const hasRoi = hasInvestment && hasRevenue;
   const hasAverageTicket = hasRevenue && convertedLeads > 0;
@@ -1676,6 +1729,26 @@ function formatOptionalHours(value: number | null) {
   return value >= 24 ? `${(value / 24).toFixed(1)} dias` : `${value.toFixed(1)}h`;
 }
 
+function calculateInvestmentForPeriod(
+  investment: MarketingInvestment,
+  periodDates: string[],
+) {
+  const totals = periodDates.reduce(
+    (acc, dateKey) => {
+      acc.monthlyPortion += investment.mensalidade / getDaysInMonth(dateKey);
+      acc.weeklyPortion += investment.semanal / 7;
+      return acc;
+    },
+    { monthlyPortion: 0, weeklyPortion: 0 },
+  );
+
+  return {
+    monthlyPortion: totals.monthlyPortion,
+    weeklyPortion: totals.weeklyPortion,
+    total: totals.monthlyPortion + totals.weeklyPortion,
+  };
+}
+
 function filterMarketingInvestments(
   investments: MarketingInvestment[],
   source: MarketingSource,
@@ -1690,28 +1763,28 @@ function filterMarketingInvestments(
 function buildLeadSourceInsight(
   source: MarketingSource,
   leads: LeadMarketing[],
+  sales: Venda[],
   investments: MarketingInvestment[],
+  periodDates: string[],
 ): LeadSourceInsight {
   const label =
     marketingSourceOptions.find((item) => item.value === source)?.label ?? source;
   const sourceLeads = leads.filter((lead) => getLeadSource(lead) === source);
+  const sourceSales = sales.filter((venda) => getVendaSource(venda) === source);
   const sourceInvestments = filterMarketingInvestments(investments, source);
 
   return {
     value: source,
     label,
     total: sourceLeads.length,
-    qualified: sourceLeads.filter((lead) => lead.possuiFinanciamentoAtivo === true)
-      .length,
-    contactable: sourceLeads.filter(hasContactInfo).length,
-    monthlyInvestment: sourceInvestments.reduce(
-      (total, investment) => total + investment.mensalidade,
-      0,
-    ),
-    weeklyInvestment: sourceInvestments.reduce(
-      (total, investment) => total + investment.semanal,
-      0,
-    ),
+    qualified: sourceSales.length,
+    contactable: sourceSales.reduce((total, venda) => total + venda.meta, 0),
+    monthlyInvestment: sourceInvestments.reduce((total, investment) => {
+      return total + calculateInvestmentForPeriod(investment, periodDates).total;
+    }, 0),
+    weeklyInvestment: sourceInvestments.reduce((total, investment) => {
+      return total + calculateInvestmentForPeriod(investment, periodDates).weeklyPortion;
+    }, 0),
   };
 }
 
@@ -1745,6 +1818,74 @@ function buildLeadDailyRows(leads: LeadMarketing[]): LeadDailyRow[] {
   });
 
   return [...rows.values()].sort((a, b) => b.total - a.total);
+}
+
+function getMarketingPeriodDates(
+  mode: MarketingPeriodMode,
+  monthKey: string,
+  rangeStart: string,
+  rangeEnd: string,
+  todayKey: string,
+  yesterdayKey: string,
+) {
+  if (mode === "today") {
+    return [todayKey];
+  }
+
+  if (mode === "yesterday") {
+    return [yesterdayKey];
+  }
+
+  if (mode === "range") {
+    const start = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeEnd : rangeStart;
+    const end = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeStart : rangeEnd;
+
+    if (start && end) {
+      return buildDateRange(start, end);
+    }
+
+    if (start) {
+      return [start];
+    }
+
+    if (end) {
+      return [end];
+    }
+
+    return [todayKey];
+  }
+
+  const monthStart = `${monthKey}-01`;
+  const monthEnd =
+    monthKey === todayKey.slice(0, 7)
+      ? todayKey
+      : `${monthKey}-${String(getDaysInMonth(monthKey)).padStart(2, "0")}`;
+
+  return buildDateRange(monthStart, monthEnd);
+}
+
+function buildDateRange(startKey: string, endKey: string) {
+  const dates: string[] = [];
+  const current = new Date(`${startKey}T00:00:00`);
+  const end = new Date(`${endKey}T00:00:00`);
+
+  while (current <= end) {
+    dates.push(
+      [
+        current.getFullYear(),
+        String(current.getMonth() + 1).padStart(2, "0"),
+        String(current.getDate()).padStart(2, "0"),
+      ].join("-"),
+    );
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
+
+function getDaysInMonth(dateKey: string) {
+  const [year, month] = dateKey.slice(0, 7).split("-").map(Number);
+  return new Date(year, month, 0).getDate();
 }
 
 function getPeakHour(leads: LeadMarketing[]) {

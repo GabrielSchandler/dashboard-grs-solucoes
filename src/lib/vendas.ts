@@ -9,6 +9,7 @@ export type Venda = {
   cliente: string;
   meta: number;
   equipe: Equipe;
+  origem: string;
 };
 
 export type LeadMarketing = {
@@ -605,6 +606,7 @@ function rowToVenda(row: SheetRow): Venda | null {
     cliente,
     meta,
     equipe,
+    origem: normalizeLeadSource(readRowText(row, ["ORIGEM", "EMPRESA", "CANAL"])),
   };
 }
 
