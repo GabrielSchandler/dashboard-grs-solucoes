@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Equipe = "COMERCIAL" | "JURIDICO";
 type View = "tv" | "operacao" | "gestao" | "marketing";
+type SalesPeriodMode = "today" | "yesterday" | "month" | "range";
 
 type Venda = {
   nome: string;
@@ -194,7 +195,20 @@ function DashboardReady({
   onRefresh: () => void;
   onViewChange: (view: View) => void;
 }) {
-  const model = useMemo(() => buildDashboardModel(data), [data]);
+  const currentMonthKey = getCurrentMonthKey();
+  const tvSales = useMemo(
+    () => data.vendas.filter((venda) => venda.data.startsWith(currentMonthKey)),
+    [data.vendas, currentMonthKey],
+  );
+  const model = useMemo(
+    () =>
+      buildDashboardModel(tvSales, data.meta, {
+        periodLabel: formatMonthKeyLabel(currentMonthKey),
+        referenceDate: getRelativeDateKey(0),
+        workdays: getMonthWorkdayStats(currentMonthKey),
+      }),
+    [tvSales, data.meta, currentMonthKey],
+  );
 
   if (activeView === "tv") {
     return (
@@ -214,8 +228,8 @@ function DashboardReady({
         onViewChange={onViewChange}
       />
 
-      {activeView === "operacao" ? <OperationView model={model} /> : null}
-      {activeView === "gestao" ? <ManagementView model={model} /> : null}
+      {activeView === "operacao" ? <OperationView vendas={data.vendas} meta={data.meta} /> : null}
+      {activeView === "gestao" ? <ManagementView vendas={data.vendas} meta={data.meta} /> : null}
       {activeView === "marketing" ? (
         <MarketingView
           investments={data.marketingInvestments}
@@ -228,9 +242,62 @@ function DashboardReady({
   );
 }
 
-function OperationView({ model }: { model: DashboardModel }) {
+function OperationView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
+  const [periodMode, setPeriodMode] = useState<SalesPeriodMode>("month");
+  const [monthFilter, setMonthFilter] = useState(() => getCurrentMonthKey());
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const monthOptions = useMemo(() => getAvailableMonthKeys(vendas), [vendas]);
+  const periodConfig = useMemo(
+    () => getSalesPeriodConfig(vendas, periodMode, monthFilter, rangeStart, rangeEnd),
+    [vendas, periodMode, monthFilter, rangeStart, rangeEnd],
+  );
+  const model = useMemo(
+    () =>
+      buildDashboardModel(periodConfig.sales, meta, {
+        periodLabel: periodConfig.label,
+        referenceDate: periodConfig.referenceDate,
+        workdays: periodConfig.workdays,
+      }),
+    [periodConfig, meta],
+  );
+
   return (
     <div className="operationScreen">
+      <SalesPeriodToolbar
+        monthFilter={monthFilter}
+        monthOptions={monthOptions}
+        periodMode={periodMode}
+        rangeEnd={rangeEnd}
+        rangeStart={rangeStart}
+        summary={periodConfig.label}
+        onMonthChange={(value) => {
+          setMonthFilter(value || getCurrentMonthKey());
+          setPeriodMode("month");
+        }}
+        onQuickModeChange={(mode) => {
+          setPeriodMode(mode);
+          if (mode === "month") {
+            setMonthFilter(getCurrentMonthKey());
+          }
+          setRangeStart("");
+          setRangeEnd("");
+        }}
+        onRangeEndChange={(value) => {
+          setRangeEnd(value);
+          setPeriodMode("range");
+        }}
+        onRangeStartChange={(value) => {
+          setRangeStart(value);
+          setPeriodMode("range");
+        }}
+        onReset={() => {
+          setPeriodMode("month");
+          setMonthFilter(getCurrentMonthKey());
+          setRangeStart("");
+          setRangeEnd("");
+        }}
+      />
       <section className="heroGrid" aria-label="Indicadores principais">
         <article className="heroCard heroCardMain">
           <span className="eyebrow">Faturamento total</span>
@@ -581,8 +648,148 @@ function Header({
   );
 }
 
-function ManagementView({ model }: { model: DashboardModel }) {
+function SalesPeriodToolbar({
+  periodMode,
+  monthFilter,
+  monthOptions,
+  rangeStart,
+  rangeEnd,
+  summary,
+  onMonthChange,
+  onQuickModeChange,
+  onRangeStartChange,
+  onRangeEndChange,
+  onReset,
+}: {
+  periodMode: SalesPeriodMode;
+  monthFilter: string;
+  monthOptions: string[];
+  rangeStart: string;
+  rangeEnd: string;
+  summary: string;
+  onMonthChange: (value: string) => void;
+  onQuickModeChange: (mode: Exclude<SalesPeriodMode, "range">) => void;
+  onRangeStartChange: (value: string) => void;
+  onRangeEndChange: (value: string) => void;
+  onReset: () => void;
+}) {
+  return (
+    <section className="marketingHeader">
+      <div>
+        <span className="eyebrow">Período</span>
+        <h2>{summary}</h2>
+        <p>Selecione mês ou intervalo personalizado.</p>
+      </div>
+      <div className="marketingControls" aria-label="Controles de período">
+        <div className="marketingFilterToolbar">
+          <div className="marketingFilterGroup">
+            <span className="filterGroupLabel">Período rápido</span>
+            <div className="quickPeriodTabs">
+              {[
+                { mode: "today" as const, label: "Hoje" },
+                { mode: "yesterday" as const, label: "Ontem" },
+                { mode: "month" as const, label: "Mês atual" },
+              ].map((item) => (
+                <button
+                  className={periodMode === item.mode ? "active" : ""}
+                  key={item.mode}
+                  type="button"
+                  onClick={() => onQuickModeChange(item.mode)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="marketingFilterGroup marketingDateGroup">
+            <span className="filterGroupLabel">Meses</span>
+            <div className="periodPickers">
+              <label>
+                <span>Mês</span>
+                <select
+                  aria-label="Selecionar mês"
+                  value={monthFilter}
+                  onChange={(event) => onMonthChange(event.target.value)}
+                >
+                  {monthOptions.map((monthKey) => (
+                    <option key={monthKey} value={monthKey}>
+                      {formatMonthKeyLabel(monthKey)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="marketingFilterGroup marketingDateGroup">
+            <span className="filterGroupLabel">Período personalizado</span>
+            <div className="periodPickers">
+              <label>
+                <span>Data inicial</span>
+                <input
+                  aria-label="Início do período"
+                  type="date"
+                  value={rangeStart}
+                  onChange={(event) => onRangeStartChange(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Data final</span>
+                <input
+                  aria-label="Fim do período"
+                  type="date"
+                  value={rangeEnd}
+                  onChange={(event) => onRangeEndChange(event.target.value)}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="marketingFilterGroup marketingActionGroup">
+            <span className="filterGroupLabel">Ações</span>
+            <div className="filterActions">
+              <button className="filterClear" type="button" onClick={onReset}>
+                Voltar para mês atual
+              </button>
+              <button className="filterApply" disabled type="button">
+                {periodMode === "range"
+                  ? "Período ativo"
+                  : periodMode === "today"
+                    ? "Hoje ativo"
+                    : periodMode === "yesterday"
+                      ? "Ontem ativo"
+                      : "Mês ativo"}
+              </button>
+            </div>
+          </div>
+        </div>
+        <span className="periodSummary">Exibindo: {summary}</span>
+      </div>
+    </section>
+  );
+}
+
+function ManagementView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
   const [teamFilter, setTeamFilter] = useState<"TODOS" | Equipe>("TODOS");
+  const [periodMode, setPeriodMode] = useState<SalesPeriodMode>("month");
+  const [monthFilter, setMonthFilter] = useState(() => getCurrentMonthKey());
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const monthOptions = useMemo(() => getAvailableMonthKeys(vendas), [vendas]);
+  const periodConfig = useMemo(
+    () => getSalesPeriodConfig(vendas, periodMode, monthFilter, rangeStart, rangeEnd),
+    [vendas, periodMode, monthFilter, rangeStart, rangeEnd],
+  );
+  const model = useMemo(
+    () =>
+      buildDashboardModel(periodConfig.sales, meta, {
+        periodLabel: periodConfig.label,
+        referenceDate: periodConfig.referenceDate,
+        workdays: periodConfig.workdays,
+      }),
+    [periodConfig, meta],
+  );
   const filteredSales =
     teamFilter === "TODOS"
       ? model.recentSales
@@ -590,6 +797,40 @@ function ManagementView({ model }: { model: DashboardModel }) {
 
   return (
     <div className="managementScreen">
+      <SalesPeriodToolbar
+        monthFilter={monthFilter}
+        monthOptions={monthOptions}
+        periodMode={periodMode}
+        rangeEnd={rangeEnd}
+        rangeStart={rangeStart}
+        summary={periodConfig.label}
+        onMonthChange={(value) => {
+          setMonthFilter(value || getCurrentMonthKey());
+          setPeriodMode("month");
+        }}
+        onQuickModeChange={(mode) => {
+          setPeriodMode(mode);
+          if (mode === "month") {
+            setMonthFilter(getCurrentMonthKey());
+          }
+          setRangeStart("");
+          setRangeEnd("");
+        }}
+        onRangeEndChange={(value) => {
+          setRangeEnd(value);
+          setPeriodMode("range");
+        }}
+        onRangeStartChange={(value) => {
+          setRangeStart(value);
+          setPeriodMode("range");
+        }}
+        onReset={() => {
+          setPeriodMode("month");
+          setMonthFilter(getCurrentMonthKey());
+          setRangeStart("");
+          setRangeEnd("");
+        }}
+      />
       <section className="managementHero">
         <article>
           <span className="eyebrow">Visao executiva</span>
@@ -1996,6 +2237,12 @@ function getCurrentMonthKey() {
   return getRelativeDateKey(0).slice(0, 7);
 }
 
+function getAvailableMonthKeys(vendas: Venda[]) {
+  const months = new Set(vendas.map((venda) => venda.data.slice(0, 7)));
+  months.add(getCurrentMonthKey());
+  return [...months].sort((a, b) => b.localeCompare(a));
+}
+
 function getRelativeDateKey(offsetDays: number) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
@@ -2075,6 +2322,75 @@ function getMarketingPeriodSummary(
   });
 }
 
+function getSalesPeriodConfig(
+  vendas: Venda[],
+  mode: SalesPeriodMode,
+  monthKey: string,
+  rangeStart: string,
+  rangeEnd: string,
+) {
+  if (mode === "today") {
+    const todayKey = getRelativeDateKey(0);
+    return {
+      sales: vendas.filter((venda) => venda.data === todayKey),
+      label: `Hoje: ${formatDateKeyLabel(todayKey)}`,
+      referenceDate: todayKey,
+      workdays: getRangeWorkdayStats(todayKey, todayKey),
+    };
+  }
+
+  if (mode === "yesterday") {
+    const yesterdayKey = getRelativeDateKey(-1);
+    return {
+      sales: vendas.filter((venda) => venda.data === yesterdayKey),
+      label: `Ontem: ${formatDateKeyLabel(yesterdayKey)}`,
+      referenceDate: yesterdayKey,
+      workdays: getRangeWorkdayStats(yesterdayKey, yesterdayKey),
+    };
+  }
+
+  if (mode === "range") {
+    const start = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeEnd : rangeStart;
+    const end = rangeStart && rangeEnd && rangeStart > rangeEnd ? rangeStart : rangeEnd;
+
+    if (start && end) {
+      return {
+        sales: vendas.filter((venda) => venda.data >= start && venda.data <= end),
+        label: `${formatDateKeyLabel(start)} até ${formatDateKeyLabel(end)}`,
+        referenceDate: end,
+        workdays: getRangeWorkdayStats(start, end),
+      };
+    }
+  }
+
+  const monthSales = vendas.filter((venda) => venda.data.startsWith(monthKey));
+  const referenceDate =
+    monthKey === getCurrentMonthKey()
+      ? getRelativeDateKey(0)
+      : `${monthKey}-${String(getDaysInMonth(monthKey)).padStart(2, "0")}`;
+
+  return {
+    sales: monthSales,
+    label: formatMonthKeyLabel(monthKey),
+    referenceDate,
+    workdays: getMonthWorkdayStats(monthKey),
+  };
+}
+
+function formatMonthKeyLabel(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 1, 1);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Mês selecionado";
+  }
+
+  return date.toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function formatDateKeyLabel(dateKey: string) {
   const [year, month, day] = dateKey.split("-");
 
@@ -2097,56 +2413,62 @@ function FutureView({ title }: { title: string }) {
 
 type DashboardModel = ReturnType<typeof buildDashboardModel>;
 
-function buildDashboardModel(data: ApiResponse) {
-  const activeMonth = getActiveMonth(data.vendas);
-  const monthSales = data.vendas.filter((venda) => venda.data.startsWith(activeMonth.key));
-  const comercial = monthSales.filter((venda) => venda.equipe === "COMERCIAL");
-  const juridico = monthSales.filter((venda) => venda.equipe === "JURIDICO");
+function buildDashboardModel(
+  vendas: Venda[],
+  meta: number,
+  options: {
+    periodLabel: string;
+    referenceDate: string;
+    workdays: { total: number; elapsed: number; remaining: number };
+  },
+) {
+  const comercial = vendas.filter((venda) => venda.equipe === "COMERCIAL");
+  const juridico = vendas.filter((venda) => venda.equipe === "JURIDICO");
   const totalComercial = sum(comercial);
   const totalJuridico = sum(juridico);
   const total = totalComercial + totalJuridico;
-  const goalPct = Math.min((total / data.meta) * 100, 100);
-  const week = getWeekBounds();
-  const weekSales = monthSales.filter((venda) => venda.data >= week.start && venda.data <= week.end);
+  const goalPct = Math.min((total / meta) * 100, 100);
+  const week = getWeekBoundsForDate(options.referenceDate);
+  const weekSales = vendas.filter((venda) => venda.data >= week.start && venda.data <= week.end);
   const weekComercial = weekSales.filter((venda) => venda.equipe === "COMERCIAL");
   const weekJuridico = weekSales.filter((venda) => venda.equipe === "JURIDICO");
-  const days = groupByDate(monthSales);
+  const days = groupByDate(vendas);
   const bestDay = days.length > 0 ? [...days].sort((a, b) => b.total - a.total)[0] : null;
-  const overallRanking = rankBySeller(monthSales);
-  const workdays = getWorkdayStats(activeMonth.key);
+  const overallRanking = rankBySeller(vendas);
+  const workdays = options.workdays;
   const averageDailyRevenue = workdays.elapsed > 0 ? total / workdays.elapsed : 0;
   const projectedRevenue = averageDailyRevenue * workdays.total;
   const baseGoal = 100000;
   const idealRevenueToDate =
-    workdays.total > 0 ? data.meta * (workdays.elapsed / workdays.total) : 0;
+    workdays.total > 0 ? meta * (workdays.elapsed / workdays.total) : 0;
   const rhythmDelta = total - idealRevenueToDate;
   const requiredPerRemainingWorkday =
-    workdays.remaining > 0 ? Math.max(data.meta - total, 0) / workdays.remaining : 0;
+    workdays.remaining > 0 ? Math.max(meta - total, 0) / workdays.remaining : 0;
   const teamSummary = [
     makeTeamSummary("Comercial", totalComercial, comercial.length, total),
     makeTeamSummary("Jurídico", totalJuridico, juridico.length, total),
   ];
 
   return {
-    vendas: monthSales,
+    vendas,
     comercial,
     juridico,
     total,
     totalComercial,
     totalJuridico,
     baseGoal,
-    meta: data.meta,
+    meta,
     baseGoalPct: Math.min((total / baseGoal) * 100, 100),
-    remaining: Math.max(data.meta - total, 0),
+    remaining: Math.max(meta - total, 0),
     goalPct,
-    averageTicket: monthSales.length > 0 ? total / monthSales.length : 0,
+    averageTicket: vendas.length > 0 ? total / vendas.length : 0,
     rankComercialMonth: rankBySeller(comercial),
     rankJuridicoMonth: rankBySeller(juridico),
     rankComercialWeek: rankBySeller(weekComercial),
     rankJuridicoWeek: rankBySeller(weekJuridico),
     days,
-    recentSales: [...monthSales].sort((a, b) => b.data.localeCompare(a.data)),
-    monthLabel: activeMonth.label,
+    recentSales: [...vendas].sort((a, b) => b.data.localeCompare(a.data)),
+    monthLabel: options.periodLabel,
     bestDay,
     overallRanking,
     teamSummary,
@@ -2242,24 +2564,7 @@ function useWeather(): WeatherState {
   return weather;
 }
 
-function getActiveMonth(vendas: Venda[]) {
-  const now = new Date();
-  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const hasCurrentMonth = vendas.some((venda) => venda.data.startsWith(currentKey));
-  const key =
-    hasCurrentMonth || vendas.length === 0
-      ? currentKey
-      : [...vendas].sort((a, b) => b.data.localeCompare(a.data))[0].data.slice(0, 7);
-  const [year, month] = key.split("-").map(Number);
-  const label = new Date(year, month - 1, 1).toLocaleDateString("pt-BR", {
-    month: "long",
-    year: "numeric",
-  });
-
-  return { key, label };
-}
-
-function getWorkdayStats(monthKey: string) {
+function getMonthWorkdayStats(monthKey: string) {
   const [year, month] = monthKey.split("-").map(Number);
   const today = new Date();
   const monthStart = new Date(year, month - 1, 1);
@@ -2273,6 +2578,18 @@ function getWorkdayStats(monthKey: string) {
     total: countWeekdays(monthStart, monthEnd),
     elapsed: countWeekdays(monthStart, elapsedEnd),
     remaining: isCurrentMonth ? countWeekdays(remainingStart, monthEnd) : 0,
+  };
+}
+
+function getRangeWorkdayStats(startKey: string, endKey: string) {
+  const start = new Date(`${startKey}T00:00:00`);
+  const end = new Date(`${endKey}T00:00:00`);
+  const total = countWeekdays(start, end);
+
+  return {
+    total,
+    elapsed: total,
+    remaining: 0,
   };
 }
 
@@ -2352,8 +2669,8 @@ function groupByDate(vendas: Venda[]): DayRevenue[] {
   return [...map.values()].sort((a, b) => a.data.localeCompare(b.data));
 }
 
-function getWeekBounds() {
-  const now = new Date();
+function getWeekBoundsForDate(dateKey: string) {
+  const now = new Date(`${dateKey}T00:00:00`);
   const day = now.getDay();
   const monday = new Date(now);
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
