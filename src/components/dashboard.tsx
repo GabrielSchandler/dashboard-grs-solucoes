@@ -16,6 +16,7 @@ type Venda = {
 
 type MarketingSource = "todos" | "soul" | "growper" | "sem_origem";
 type MarketingPeriodMode = "yesterday" | "today" | "month" | "range";
+type MarketingTeamFilter = "TODOS" | Equipe;
 
 type LeadMarketing = {
   dataRecebimento: string;
@@ -107,6 +108,12 @@ const marketingSourceOptions: Array<{ value: MarketingSource; label: string }> =
   { value: "todos", label: "Todos" },
   { value: "soul", label: "Soul" },
   { value: "growper", label: "Growper" },
+];
+
+const marketingTeamOptions: Array<{ value: MarketingTeamFilter; label: string }> = [
+  { value: "TODOS", label: "Todos" },
+  { value: "COMERCIAL", label: "Comercial" },
+  { value: "JURIDICO", label: "Jurídico" },
 ];
 
 const waitingForData = "-";
@@ -948,6 +955,7 @@ function MarketingView({
   source: string;
 }) {
   const [sourceFilter, setSourceFilter] = useState<MarketingSource>("todos");
+  const [teamFilter, setTeamFilter] = useState<MarketingTeamFilter>("TODOS");
   const [periodMode, setPeriodMode] = useState<MarketingPeriodMode>("month");
   const [monthFilter, setMonthFilter] = useState(() => getCurrentMonthKey());
   const [rangeStart, setRangeStart] = useState("");
@@ -1002,10 +1010,14 @@ function MarketingView({
 
     return venda.data.startsWith(monthFilter);
   });
+  const teamFilteredSales =
+    teamFilter === "TODOS"
+      ? dateFilteredSales
+      : dateFilteredSales.filter((venda) => venda.equipe === teamFilter);
   const filteredSales =
     sourceFilter === "todos"
-      ? dateFilteredSales.filter((venda) => getVendaSource(venda) !== "sem_origem")
-      : dateFilteredSales.filter((venda) => getVendaSource(venda) === sourceFilter);
+      ? teamFilteredSales.filter((venda) => getVendaSource(venda) !== "sem_origem")
+      : teamFilteredSales.filter((venda) => getVendaSource(venda) === sourceFilter);
   const todayLeads = filteredLeads.filter((lead) => isToday(lead.dataRecebimento)).length;
   const dailyRows = buildLeadDailyRows(filteredLeads);
   const periodDates = getMarketingPeriodDates(
@@ -1021,7 +1033,7 @@ function MarketingView({
     buildLeadSourceInsight(
       item.value,
       dateFilteredLeads,
-      dateFilteredSales,
+      teamFilteredSales,
       investments,
       periodDates,
       periodMode,
@@ -1056,6 +1068,8 @@ function MarketingView({
     sourceFilter === "todos"
       ? "Todos os parceiros"
       : marketingSourceOptions.find((item) => item.value === sourceFilter)?.label ?? "Parceiro";
+  const teamSummary =
+    teamFilter === "TODOS" ? "Todas as equipes" : formatTeamName(teamFilter);
 
   function clearMarketingFilters() {
     setPeriodMode("month");
@@ -1063,6 +1077,7 @@ function MarketingView({
     setRangeStart("");
     setRangeEnd("");
     setSourceFilter("todos");
+    setTeamFilter("TODOS");
   }
 
   return (
@@ -1158,6 +1173,23 @@ function MarketingView({
               </div>
             </div>
 
+            <div className="marketingFilterGroup">
+              <span className="filterGroupLabel">Equipe</span>
+              <div className="filterTabs marketingTabs">
+            {marketingTeamOptions.map((item) => (
+              <button
+                className={teamFilter === item.value ? "active" : ""}
+                key={item.value}
+                title={`Ver ${item.label.toLowerCase()}`}
+                type="button"
+                onClick={() => setTeamFilter(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
+              </div>
+            </div>
+
             <div className="marketingFilterGroup marketingActionGroup">
               <span className="filterGroupLabel">Ações</span>
               <div className="filterActions">
@@ -1176,7 +1208,7 @@ function MarketingView({
             </div>
           </div>
           <span className="periodSummary">
-            Exibindo: {periodSummary} | {sourceSummary}
+            Exibindo: {periodSummary} | {sourceSummary} | {teamSummary}
           </span>
         </div>
       </section>
