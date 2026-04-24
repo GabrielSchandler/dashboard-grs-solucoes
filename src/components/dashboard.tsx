@@ -1405,69 +1405,108 @@ function useNewSaleSound(triggerKey: string | null) {
     }
 
     const context = audioContextRef.current;
+    const nodes: AudioNode[] = [];
+    const closers: Array<() => void> = [];
+
     const master = context.createGain();
     master.gain.setValueAtTime(0.0001, context.currentTime);
-    master.gain.exponentialRampToValueAtTime(0.09, context.currentTime + 0.02);
-    master.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 1.1);
+    master.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.03);
+    master.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 2.3);
     master.connect(context.destination);
+    nodes.push(master);
 
-    const lead = context.createOscillator();
-    const harmony = context.createOscillator();
-    const sub = context.createOscillator();
+    const compressor = context.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.knee.value = 18;
+    compressor.ratio.value = 10;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.22;
+    compressor.connect(master);
+    nodes.push(compressor);
 
-    lead.type = "triangle";
-    harmony.type = "sawtooth";
-    sub.type = "sine";
+    const makeHorn = (startAt: number, freqA: number, freqB: number, duration: number) => {
+      const oscA = context.createOscillator();
+      const oscB = context.createOscillator();
+      const gain = context.createGain();
+      const filter = context.createBiquadFilter();
 
-    lead.frequency.setValueAtTime(660, context.currentTime);
-    lead.frequency.exponentialRampToValueAtTime(990, context.currentTime + 0.18);
-    lead.frequency.exponentialRampToValueAtTime(1320, context.currentTime + 0.42);
+      oscA.type = "sawtooth";
+      oscB.type = "square";
+      oscA.frequency.setValueAtTime(freqA, startAt);
+      oscB.frequency.setValueAtTime(freqB, startAt);
+      oscA.detune.setValueAtTime(-6, startAt);
+      oscB.detune.setValueAtTime(6, startAt);
 
-    harmony.frequency.setValueAtTime(880, context.currentTime);
-    harmony.frequency.exponentialRampToValueAtTime(1175, context.currentTime + 0.26);
-    harmony.frequency.exponentialRampToValueAtTime(1568, context.currentTime + 0.48);
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(1400, startAt);
+      filter.Q.value = 0.8;
 
-    sub.frequency.setValueAtTime(220, context.currentTime);
-    sub.frequency.exponentialRampToValueAtTime(110, context.currentTime + 0.52);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(0.28, startAt + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.14, startAt + duration * 0.42);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
 
-    const leadGain = context.createGain();
-    const harmonyGain = context.createGain();
-    const subGain = context.createGain();
+      oscA.connect(filter);
+      oscB.connect(filter);
+      filter.connect(gain);
+      gain.connect(compressor);
 
-    leadGain.gain.setValueAtTime(0.0001, context.currentTime);
-    leadGain.gain.exponentialRampToValueAtTime(0.8, context.currentTime + 0.04);
-    leadGain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.7);
+      oscA.start(startAt);
+      oscB.start(startAt);
+      oscA.stop(startAt + duration);
+      oscB.stop(startAt + duration);
 
-    harmonyGain.gain.setValueAtTime(0.0001, context.currentTime + 0.06);
-    harmonyGain.gain.exponentialRampToValueAtTime(0.35, context.currentTime + 0.14);
-    harmonyGain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.74);
+      nodes.push(oscA, oscB, gain, filter);
+    };
 
-    subGain.gain.setValueAtTime(0.0001, context.currentTime);
-    subGain.gain.exponentialRampToValueAtTime(0.2, context.currentTime + 0.08);
-    subGain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.85);
+    const playNoiseBurst = (startAt: number, duration: number, strength: number) => {
+      const bufferSize = Math.max(1, Math.floor(context.sampleRate * duration));
+      const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+      const channel = buffer.getChannelData(0);
 
-    lead.connect(leadGain);
-    harmony.connect(harmonyGain);
-    sub.connect(subGain);
-    leadGain.connect(master);
-    harmonyGain.connect(master);
-    subGain.connect(master);
+      for (let index = 0; index < bufferSize; index += 1) {
+        const decay = 1 - index / bufferSize;
+        channel[index] = (Math.random() * 2 - 1) * decay;
+      }
 
-    lead.start();
-    harmony.start(context.currentTime + 0.03);
-    sub.start();
-    lead.stop(context.currentTime + 0.72);
-    harmony.stop(context.currentTime + 0.76);
-    sub.stop(context.currentTime + 0.92);
+      const source = context.createBufferSource();
+      const bandpass = context.createBiquadFilter();
+      const gain = context.createGain();
+
+      source.buffer = buffer;
+      bandpass.type = "bandpass";
+      bandpass.frequency.setValueAtTime(1800, startAt);
+      bandpass.Q.value = 0.7;
+
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(strength, startAt + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+      source.connect(bandpass);
+      bandpass.connect(gain);
+      gain.connect(compressor);
+
+      source.start(startAt);
+      source.stop(startAt + duration);
+
+      nodes.push(source, bandpass, gain);
+    };
+
+    const now = context.currentTime + 0.01;
+
+    makeHorn(now, 392, 415, 0.42);
+    makeHorn(now + 0.16, 392, 415, 0.42);
+    makeHorn(now + 0.54, 523.25, 554.37, 0.62);
+    makeHorn(now + 0.78, 523.25, 554.37, 0.62);
+
+    playNoiseBurst(now + 0.02, 0.22, 0.09);
+    playNoiseBurst(now + 0.21, 0.18, 0.07);
+    playNoiseBurst(now + 0.92, 0.24, 0.08);
+    playNoiseBurst(now + 1.12, 0.3, 0.07);
 
     return () => {
-      lead.disconnect();
-      harmony.disconnect();
-      sub.disconnect();
-      leadGain.disconnect();
-      harmonyGain.disconnect();
-      subGain.disconnect();
-      master.disconnect();
+      closers.forEach((close) => close());
+      nodes.forEach((node) => node.disconnect());
     };
   }, [triggerKey]);
 }
