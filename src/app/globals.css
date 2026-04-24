@@ -2483,14 +2483,16 @@ body {
   z-index: 38;
   pointer-events: none;
   overflow: hidden;
+  display: grid;
+  place-items: center;
 }
 
 .saleCelebrationFlash {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 26%),
-    radial-gradient(circle at center, rgba(214, 40, 57, 0.22), transparent 58%);
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.22), transparent 18%),
+    radial-gradient(circle at center, rgba(214, 40, 57, 0.24), transparent 56%);
   animation: celebrationFlash 900ms ease-out;
 }
 
@@ -2498,16 +2500,28 @@ body {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(214, 40, 57, 0.08), transparent 22%, transparent 78%, rgba(214, 40, 57, 0.08)),
-    linear-gradient(180deg, rgba(214, 40, 57, 0.12), transparent 22%, transparent 78%, rgba(255, 255, 255, 0.08));
-  animation: celebrationGlow 1.8s ease-out;
+    radial-gradient(circle at center, rgba(214, 40, 57, 0.2), transparent 48%),
+    linear-gradient(90deg, rgba(214, 40, 57, 0.12), transparent 22%, transparent 78%, rgba(214, 40, 57, 0.12)),
+    linear-gradient(180deg, rgba(214, 40, 57, 0.15), transparent 22%, transparent 78%, rgba(255, 255, 255, 0.08));
+  animation: celebrationGlow 2.4s ease-out;
+}
+
+.saleCelebrationMedia {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0.9;
+}
+
+.saleCelebrationMedia dotlottie-wc {
+  width: min(72vw, 760px);
+  height: min(72vw, 760px);
+  filter: drop-shadow(0 0 24px rgba(255, 255, 255, 0.16));
 }
 
 .saleCelebrationBanner {
-  position: absolute;
-  top: 11%;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   min-width: 320px;
   max-width: min(720px, calc(100vw - 40px));
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -2522,6 +2536,16 @@ body {
     0 0 0 1px rgba(214, 40, 57, 0.16),
     0 0 48px rgba(214, 40, 57, 0.18);
   animation: bannerPop 1.1s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.saleCelebrationBannerDetailed {
+  width: min(560px, calc(100vw - 40px));
+  padding: 28px 30px 30px;
+  backdrop-filter: blur(16px);
+}
+
+.saleCelebrationEyebrow {
+  color: #ffe5e8;
 }
 
 .saleCelebrationBanner span {
@@ -2550,20 +2574,56 @@ body {
   font-weight: 700;
 }
 
-.fireworkBurst {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  transform: translate(-50%, -50%);
+.saleCelebrationRows {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
 }
 
-.fireworkBurst i {
+.saleCelebrationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.saleCelebrationRow span {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 229, 232, 0.78);
+}
+
+.saleCelebrationRow b {
+  color: #ffffff;
+  font-size: clamp(16px, 2.2vw, 22px);
+  text-align: right;
+}
+
+.saleCelebrationRowValue {
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.24), transparent 45%),
+    linear-gradient(180deg, rgba(214, 40, 57, 0.18), rgba(255, 255, 255, 0.05));
+  border-color: rgba(214, 40, 57, 0.34);
+}
+
+.saleCelebrationRowValue b {
+  color: #ffffff;
+  font-size: clamp(22px, 3vw, 30px);
+}
+
+.saleSpark {
   --angle: 0deg;
   position: absolute;
   left: 50%;
   top: 50%;
   width: 5px;
-  height: 70px;
+  height: 110px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffffff 0%, #ffb7bf 35%, #d62839 100%);
   transform-origin: center top;
@@ -2571,6 +2631,28 @@ body {
   opacity: 0;
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.24);
   animation: fireworkRay 1.1s ease-out forwards;
+}
+
+@media (max-width: 720px) {
+  .saleCelebrationMedia dotlottie-wc {
+    width: min(90vw, 480px);
+    height: min(90vw, 480px);
+  }
+
+  .saleCelebrationBannerDetailed {
+    width: min(92vw, 560px);
+    padding: 22px 18px 20px;
+  }
+
+  .saleCelebrationRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .saleCelebrationRow b {
+    text-align: left;
+  }
 }
 
 .managementHero {
@@ -2704,15 +2786,15 @@ body {
 @keyframes bannerPop {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(18px) scale(0.88);
+    transform: translateY(18px) scale(0.88);
   }
   60% {
     opacity: 1;
-    transform: translateX(-50%) translateY(-3px) scale(1.03);
+    transform: translateY(-3px) scale(1.03);
   }
   100% {
     opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 

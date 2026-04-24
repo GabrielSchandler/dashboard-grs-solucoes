@@ -1,6 +1,7 @@
 "use client";
 
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import Script from "next/script";
 
 type Equipe = "COMERCIAL" | "JURIDICO";
 type View = "tv" | "operacao" | "gestao" | "marketing";
@@ -276,10 +277,8 @@ function DashboardReady({
 
   return (
     <main className="dashboardShell">
+      {activeView === "operacao" ? <SaleCelebrationOverlay notice={liveSaleNotice} /> : null}
       <LiveSaleToast notice={liveSaleNotice} />
-      {activeView === "operacao" ? (
-        <SaleCelebrationOverlay key={liveSaleNotice?.key ?? "idle"} notice={liveSaleNotice} />
-      ) : null}
       <Header
         activeView={activeView}
         updatedAt={data.updatedAt}
@@ -410,13 +409,13 @@ function OperationView({
         </article>
 
         <KpiCard
-          label="ProjeÃ§Ã£o"
+          label="Projeção"
           value={currency.format(model.projectedRevenue)}
-          detail={`MÃ©dia diÃ¡ria ${currency.format(model.averageDailyRevenue)}`}
+          detail={`Média diária ${currency.format(model.averageDailyRevenue)}`}
           tone={model.projectedRevenue >= model.meta ? "green" : "yellow"}
         />
         <KpiCard
-          label="Jurídico"
+          label={model.rhythmDelta >= 0 ? "Acima do ritmo" : "Abaixo do ritmo"}
           value={currency.format(Math.abs(model.rhythmDelta))}
           detail={`Ideal hoje ${currency.format(model.idealRevenueToDate)}`}
           tone={model.rhythmDelta >= 0 ? "green" : "yellow"}
@@ -428,10 +427,14 @@ function OperationView({
           tone="red"
         />
         <KpiCard
-          label="Projeção"
-          value={currency.format(model.projectedRevenue)}
-          detail={`Média diária ${currency.format(model.averageDailyRevenue)}`}
-          tone={model.projectedRevenue >= model.meta ? "green" : "yellow"}
+          label="Melhor vendedor"
+          value={model.bestSellerToday?.nome ?? waitingForData}
+          detail={
+            model.bestSellerToday
+              ? `${compactCurrency.format(model.bestSellerToday.total)} em ${model.bestSellerToday.vendas} venda(s)`
+              : "Sem venda registrada hoje"
+          }
+          tone="blue"
         />
       </section>
 
@@ -1336,58 +1339,85 @@ function SaleCelebrationOverlay({ notice }: { notice: LiveSaleNotice | null }) {
     return null;
   }
 
-  const bursts = Array.from({ length: 6 }, (_, index) => ({
-    id: index,
-    style: {
-      left: `${10 + index * 15}%`,
-      top: `${index % 2 === 0 ? 20 : 42}%`,
-      animationDelay: `${index * 90}ms`,
-    },
-  }));
-
   return (
     <div className="saleCelebration" aria-hidden="true">
+      <Script
+        src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.10/dist/dotlottie-wc.js"
+        type="module"
+      />
       <div className="saleCelebrationFlash" />
       <div className="saleCelebrationGlow" />
-      <div className="saleCelebrationBanner">
-        <span>Venda confirmada</span>
-        <strong>{notice.venda.nome}</strong>
-        <p>
-          {notice.venda.cliente} • {compactCurrency.format(notice.venda.meta)}
-        </p>
+      <div className="saleCelebrationMedia">
+        <dotlottie-wc
+          autoplay
+          loop
+          speed="1"
+          src="https://lottie.host/099f25a2-5179-4b2d-ac5d-73e4e804a10e/xAwcGRPNNn.lottie"
+        />
       </div>
-      {bursts.map((burst) => (
-        <div className="fireworkBurst" key={burst.id} style={burst.style}>
-          {Array.from({ length: 10 }, (_, particle) => (
-            <i
-              key={particle}
-              style={{ "--angle": `${particle * 36}deg` } as CSSProperties}
-            />
-          ))}
+      <div className="saleCelebrationBanner saleCelebrationBannerDetailed">
+        <span className="saleCelebrationEyebrow">Nova venda confirmada</span>
+        <strong>VENDA</strong>
+        <div className="saleCelebrationRows">
+          <div className="saleCelebrationRow">
+            <span>Consultor</span>
+            <b>{notice.venda.nome}</b>
+          </div>
+          <div className="saleCelebrationRow">
+            <span>Cliente</span>
+            <b>{notice.venda.cliente}</b>
+          </div>
+          <div className="saleCelebrationRow saleCelebrationRowValue">
+            <span>Valor da venda</span>
+            <b>{currency.format(notice.venda.meta)}</b>
+          </div>
         </div>
+      </div>
+      {Array.from({ length: 10 }, (_, particle) => (
+        <div
+          className="saleSpark"
+          key={particle}
+          style={{ "--angle": `${particle * 36}deg` } as CSSProperties}
+        />
       ))}
     </div>
   );
 }
 
 function useNewSaleSound(triggerKey: string | null) {
-  const audioContextRef = useRef<AudioContext | null>(null);
   const unlockedRef = useRef(false);
+  const applauseRef = useRef<HTMLAudioElement | null>(null);
+  const crowdRef = useRef<HTMLAudioElement | null>(null);
+  const fireworksRef = useRef<HTMLAudioElement | null>(null);
+
+  function stopAudio(audio: HTMLAudioElement | null) {
+    if (!audio) {
+      return;
+    }
+
+    audio.pause();
+    audio.currentTime = 0;
+  }
 
   useEffect(() => {
-    const AudioConstructor =
-      window.AudioContext ??
-      (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
+    applauseRef.current = new Audio("/sounds/palmas.mp3");
+    crowdRef.current = new Audio("/sounds/gritos.mp3");
+    fireworksRef.current = new Audio("/sounds/fogos.mp3");
 
     function unlockAudio() {
       unlockedRef.current = true;
+      [applauseRef.current, crowdRef.current, fireworksRef.current].forEach((audio) => {
+        if (!audio) {
+          return;
+        }
 
-      if (!audioContextRef.current && AudioConstructor) {
-        audioContextRef.current = new AudioConstructor();
-      }
-
-      void audioContextRef.current?.resume().catch(() => {});
+        audio.preload = "auto";
+        audio.volume = audio === fireworksRef.current ? 0.82 : 0.9;
+        void audio.play().then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+        }).catch(() => {});
+      });
     }
 
     window.addEventListener("pointerdown", unlockAudio, { passive: true });
@@ -1396,120 +1426,50 @@ function useNewSaleSound(triggerKey: string | null) {
     return () => {
       window.removeEventListener("pointerdown", unlockAudio);
       window.removeEventListener("keydown", unlockAudio);
+      stopAudio(applauseRef.current);
+      stopAudio(crowdRef.current);
+      stopAudio(fireworksRef.current);
     };
   }, []);
 
   useEffect(() => {
-    if (!triggerKey || !unlockedRef.current || !audioContextRef.current) {
+    if (!triggerKey || !unlockedRef.current) {
       return;
     }
 
-    const context = audioContextRef.current;
-    const nodes: AudioNode[] = [];
-    const closers: Array<() => void> = [];
+    stopAudio(applauseRef.current);
+    stopAudio(crowdRef.current);
+    stopAudio(fireworksRef.current);
 
-    const master = context.createGain();
-    master.gain.setValueAtTime(0.0001, context.currentTime);
-    master.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.03);
-    master.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 2.3);
-    master.connect(context.destination);
-    nodes.push(master);
-
-    const compressor = context.createDynamicsCompressor();
-    compressor.threshold.value = -18;
-    compressor.knee.value = 18;
-    compressor.ratio.value = 10;
-    compressor.attack.value = 0.003;
-    compressor.release.value = 0.22;
-    compressor.connect(master);
-    nodes.push(compressor);
-
-    const makeHorn = (startAt: number, freqA: number, freqB: number, duration: number) => {
-      const oscA = context.createOscillator();
-      const oscB = context.createOscillator();
-      const gain = context.createGain();
-      const filter = context.createBiquadFilter();
-
-      oscA.type = "sawtooth";
-      oscB.type = "square";
-      oscA.frequency.setValueAtTime(freqA, startAt);
-      oscB.frequency.setValueAtTime(freqB, startAt);
-      oscA.detune.setValueAtTime(-6, startAt);
-      oscB.detune.setValueAtTime(6, startAt);
-
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(1400, startAt);
-      filter.Q.value = 0.8;
-
-      gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.exponentialRampToValueAtTime(0.28, startAt + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.14, startAt + duration * 0.42);
-      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-
-      oscA.connect(filter);
-      oscB.connect(filter);
-      filter.connect(gain);
-      gain.connect(compressor);
-
-      oscA.start(startAt);
-      oscB.start(startAt);
-      oscA.stop(startAt + duration);
-      oscB.stop(startAt + duration);
-
-      nodes.push(oscA, oscB, gain, filter);
-    };
-
-    const playNoiseBurst = (startAt: number, duration: number, strength: number) => {
-      const bufferSize = Math.max(1, Math.floor(context.sampleRate * duration));
-      const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-      const channel = buffer.getChannelData(0);
-
-      for (let index = 0; index < bufferSize; index += 1) {
-        const decay = 1 - index / bufferSize;
-        channel[index] = (Math.random() * 2 - 1) * decay;
+    const playSafely = (audio: HTMLAudioElement | null, volume: number, delayMs = 0) => {
+      if (!audio) {
+        return null;
       }
 
-      const source = context.createBufferSource();
-      const bandpass = context.createBiquadFilter();
-      const gain = context.createGain();
+      const timer = window.setTimeout(() => {
+        audio.currentTime = 0;
+        audio.volume = volume;
+        void audio.play().catch(() => {});
+      }, delayMs);
 
-      source.buffer = buffer;
-      bandpass.type = "bandpass";
-      bandpass.frequency.setValueAtTime(1800, startAt);
-      bandpass.Q.value = 0.7;
-
-      gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.exponentialRampToValueAtTime(strength, startAt + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-
-      source.connect(bandpass);
-      bandpass.connect(gain);
-      gain.connect(compressor);
-
-      source.start(startAt);
-      source.stop(startAt + duration);
-
-      nodes.push(source, bandpass, gain);
+      return timer;
     };
 
-    const now = context.currentTime + 0.01;
-
-    makeHorn(now, 392, 415, 0.42);
-    makeHorn(now + 0.16, 392, 415, 0.42);
-    makeHorn(now + 0.54, 523.25, 554.37, 0.62);
-    makeHorn(now + 0.78, 523.25, 554.37, 0.62);
-
-    playNoiseBurst(now + 0.02, 0.22, 0.09);
-    playNoiseBurst(now + 0.21, 0.18, 0.07);
-    playNoiseBurst(now + 0.92, 0.24, 0.08);
-    playNoiseBurst(now + 1.12, 0.3, 0.07);
+    const timers = [
+      playSafely(fireworksRef.current, 0.82, 0),
+      playSafely(crowdRef.current, 0.9, 120),
+      playSafely(applauseRef.current, 0.88, 260),
+    ].filter((timer): timer is number => timer !== null);
 
     return () => {
-      closers.forEach((close) => close());
-      nodes.forEach((node) => node.disconnect());
+      timers.forEach((timer) => window.clearTimeout(timer));
+      stopAudio(applauseRef.current);
+      stopAudio(crowdRef.current);
+      stopAudio(fireworksRef.current);
     };
   }, [triggerKey]);
 }
+
 
 function getVendaKey(venda: Venda) {
   return [
