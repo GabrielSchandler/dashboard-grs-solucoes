@@ -1905,3 +1905,744 @@ button {
     scroll-behavior: auto !important;
   }
 }
+
+:root {
+  --bg: #060606;
+  --surface: #101010;
+  --surface-2: #161616;
+  --surface-3: #1d1d1d;
+  --line: #303030;
+  --text: #f7f7f7;
+  --soft: #c6c6c6;
+  --muted: #8c8c8c;
+  --red: #d62839;
+  --red-2: #8e1521;
+  --green: #ffffff;
+  --blue: #d62839;
+  --yellow: #ffffff;
+}
+
+html,
+body {
+  background:
+    radial-gradient(circle at top left, rgba(214, 40, 57, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.12), transparent 30%),
+    linear-gradient(180deg, #060606, #0b0b0b 38%, #050505 100%);
+  color: var(--text);
+  font-family: "Segoe UI Variable Display", "Segoe UI", "Aptos", sans-serif;
+}
+
+.dashboardShell {
+  position: relative;
+}
+
+.topBar,
+.heroCard,
+.kpiCard,
+.rankingBoard,
+.dailyPanel,
+.liveFeed,
+.futureView,
+.statePanel,
+.managementHero article,
+.managementPanel,
+.marketingHeader,
+.tvTime,
+.tvWeather,
+.tvMetric,
+.tvTotal,
+.tvBody > section,
+.tvRankings,
+.tvFooter {
+  border-color: rgba(90, 109, 132, 0.28);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  margin-top: 8px;
+  padding: 14px 18px;
+  border: 1px solid rgba(90, 109, 132, 0.24);
+  border-radius: 18px;
+  background: rgba(8, 12, 18, 0.84);
+  backdrop-filter: blur(18px);
+}
+
+.brandMark {
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(92, 184, 255, 0.2), transparent 45%),
+    linear-gradient(180deg, #111925, #0c1118);
+}
+
+.viewNav {
+  border-radius: 14px;
+  background: rgba(7, 11, 16, 0.72);
+}
+
+.viewNav button,
+.refreshButton {
+  border-radius: 10px;
+}
+
+.heroGrid {
+  grid-template-columns: minmax(420px, 1.5fr) repeat(4, minmax(190px, 0.52fr));
+  gap: 14px;
+  margin: 16px 0 14px;
+}
+
+.heroCard,
+.kpiCard {
+  border-radius: 18px;
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease;
+}
+
+.heroCardMain {
+  padding: 22px;
+  border-color: rgba(255, 77, 77, 0.32);
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.18), transparent 32%),
+    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.05), transparent 36%),
+    linear-gradient(180deg, #171111, #0d0d0d 68%);
+}
+
+.heroCardMain.goalMet,
+.tvTotal.goalMet,
+.partyPanel {
+  border-color: rgba(214, 40, 57, 0.54);
+  box-shadow:
+    0 18px 55px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(214, 40, 57, 0.14),
+    0 0 36px rgba(214, 40, 57, 0.14);
+}
+
+.heroCardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(214, 40, 57, 0.28);
+  border-radius: 999px;
+  padding: 0 10px;
+  color: #ffd8dd;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(214, 40, 57, 0.12);
+}
+
+.statusChip.success {
+  border-color: rgba(214, 40, 57, 0.42);
+  color: #fff1f3;
+  background: rgba(214, 40, 57, 0.14);
+}
+
+.statusChip.warn {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.heroMicroGrid,
+.tvMiniBoard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.heroMicroGrid div,
+.tvMiniBoard div {
+  border: 1px solid rgba(112, 131, 155, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px 12px;
+}
+
+.heroMicroGrid span,
+.tvMiniBoard span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.heroMicroGrid strong,
+.tvMiniBoard strong {
+  display: block;
+  margin-top: 6px;
+  color: white;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.kpiCard {
+  position: relative;
+  overflow: hidden;
+  min-height: 182px;
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.08), transparent 22%),
+    linear-gradient(180deg, rgba(22, 22, 22, 0.97), rgba(10, 10, 10, 0.98));
+}
+
+.kpiCard::after {
+  content: "";
+  position: absolute;
+  inset: auto 14px 0 14px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), currentColor 40%, rgba(255, 255, 255, 0));
+  opacity: 0.5;
+}
+
+.heroCard::before,
+.kpiCard::before,
+.miniMetric::before,
+.rankingBoard::before,
+.dailyPanel::before,
+.liveFeed::before,
+.managementHero article::before,
+.managementPanel::before,
+.marketingHeader::before,
+.tvMetric::before,
+.tvTotal::before,
+.tvRankings::before,
+.tvBody > section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -130%;
+  width: 58%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.045) 35%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.045) 65%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.heroCard,
+.kpiCard,
+.miniMetric,
+.rankingBoard,
+.dailyPanel,
+.liveFeed,
+.managementHero article,
+.managementPanel,
+.marketingHeader,
+.tvMetric,
+.tvTotal,
+.tvRankings,
+.tvBody > section {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease;
+}
+
+.heroCard:hover,
+.heroCard:focus-within,
+.kpiCard:hover,
+.kpiCard:focus-within,
+.miniMetric:hover,
+.miniMetric:focus-within,
+.rankingBoard:hover,
+.rankingBoard:focus-within,
+.dailyPanel:hover,
+.dailyPanel:focus-within,
+.liveFeed:hover,
+.liveFeed:focus-within,
+.managementHero article:hover,
+.managementHero article:focus-within,
+.managementPanel:hover,
+.managementPanel:focus-within,
+.marketingHeader:hover,
+.marketingHeader:focus-within,
+.tvMetric:hover,
+.tvMetric:focus-within,
+.tvTotal:hover,
+.tvTotal:focus-within,
+.tvRankings:hover,
+.tvRankings:focus-within,
+.tvBody > section:hover,
+.tvBody > section:focus-within {
+  transform: translateY(-5px) scale(1.018);
+  border-color: rgba(214, 40, 57, 0.56);
+  box-shadow:
+    0 26px 56px rgba(0, 0, 0, 0.36),
+    0 0 0 1px rgba(214, 40, 57, 0.16),
+    0 0 34px rgba(214, 40, 57, 0.14);
+}
+
+.heroCard:hover::before,
+.heroCard:focus-within::before,
+.kpiCard:hover::before,
+.kpiCard:focus-within::before,
+.miniMetric:hover::before,
+.miniMetric:focus-within::before,
+.rankingBoard:hover::before,
+.rankingBoard:focus-within::before,
+.dailyPanel:hover::before,
+.dailyPanel:focus-within::before,
+.liveFeed:hover::before,
+.liveFeed:focus-within::before,
+.managementHero article:hover::before,
+.managementHero article:focus-within::before,
+.managementPanel:hover::before,
+.managementPanel:focus-within::before,
+.marketingHeader:hover::before,
+.marketingHeader:focus-within::before,
+.tvMetric:hover::before,
+.tvMetric:focus-within::before,
+.tvTotal:hover::before,
+.tvTotal:focus-within::before,
+.tvRankings:hover::before,
+.tvRankings:focus-within::before,
+.tvBody > section:hover::before,
+.tvBody > section:focus-within::before {
+  opacity: 1;
+  animation: sweepGlow 900ms ease;
+}
+
+.heroCard:hover .eyebrow,
+.heroCard:focus-within .eyebrow,
+.kpiCard:hover .eyebrow,
+.kpiCard:focus-within .eyebrow,
+.miniMetric:hover span:first-child,
+.miniMetric:focus-within span:first-child,
+.rankingBoard:hover .sectionHeader span,
+.rankingBoard:focus-within .sectionHeader span,
+.dailyPanel:hover .sectionHeader span,
+.dailyPanel:focus-within .sectionHeader span,
+.liveFeed:hover .sectionHeader span,
+.liveFeed:focus-within .sectionHeader span,
+.managementPanel:hover .sectionHeader span,
+.managementPanel:focus-within .sectionHeader span,
+.tvMetric:hover span:first-child,
+.tvMetric:focus-within span:first-child,
+.tvTotal:hover > span,
+.tvTotal:focus-within > span {
+  color: #ffffff;
+}
+
+.heroCardMain:hover,
+.heroCardMain:focus-within,
+.tvTotal:hover,
+.tvTotal:focus-within {
+  border-color: rgba(214, 40, 57, 0.62);
+  box-shadow:
+    0 28px 62px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(214, 40, 57, 0.18),
+    0 0 38px rgba(214, 40, 57, 0.18);
+}
+
+.feedItem:hover,
+.feedItem:focus-within,
+.rankItem:hover,
+.rankItem:focus-within,
+.teamRow:hover,
+.teamRow:focus-within,
+.sellerTableRow:hover,
+.sellerTableRow:focus-within,
+.qualityRow:hover,
+.qualityRow:focus-within,
+.funnelRow:hover,
+.funnelRow:focus-within {
+  transform: translateX(2px);
+}
+
+.kpiCard.blue,
+.kpiCard.green,
+.kpiCard.red,
+.kpiCard.yellow {
+  color: #ffffff;
+}
+
+.kpiCard strong,
+.heroCard strong,
+.tvMetric strong,
+.tvTotal > strong {
+  letter-spacing: -0.03em;
+}
+
+.pulseGrid,
+.marketingKpis,
+.marketingInsightGrid,
+.marketingFinanceGrid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.miniMetric {
+  min-height: 124px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(14, 20, 28, 0.96), rgba(9, 13, 18, 0.96));
+}
+
+.operationGrid,
+.wideGrid,
+.marketingAnalysisGrid,
+.marketingOperationalGrid,
+.managementGrid,
+.managementGridWide {
+  gap: 14px;
+}
+
+.dailyPanel,
+.liveFeed,
+.rankingBoard,
+.managementPanel {
+  border-radius: 18px;
+}
+
+.dailyRows,
+.feedList,
+.teamRows,
+.sellerTable,
+.paceRows {
+  gap: 10px;
+}
+
+.dailyRow {
+  min-height: 42px;
+  padding: 6px 0;
+}
+
+.dailyRow.best {
+  border-radius: 14px;
+  background: rgba(246, 202, 100, 0.08);
+  padding: 8px 10px;
+}
+
+.dailyBar,
+.teamTrack {
+  height: 16px;
+  background: rgba(42, 52, 68, 0.7);
+}
+
+.dailyBar i {
+  background: linear-gradient(90deg, #7a0f1b, #d62839 55%, #ffffff 100%);
+}
+
+.rankItem,
+.feedItem,
+.teamRow,
+.sellerTableRow,
+.qualityRow,
+.funnelRow,
+.tvRestList div,
+.legalList article {
+  border-bottom-color: rgba(90, 109, 132, 0.18);
+}
+
+.rankingList,
+.tvCommercialRank,
+.tvLegalRank,
+.clockBox,
+.weatherBox,
+.marketingControls {
+  border-radius: 16px;
+  background: rgba(10, 14, 20, 0.82);
+}
+
+.rankItem:first-of-type,
+.sellerTableRow:first-child,
+.teamRow:first-child {
+  position: relative;
+}
+
+.rankItem:first-of-type::after,
+.sellerTableRow:first-child::after {
+  content: "Lider";
+  position: absolute;
+  top: 10px;
+  right: 0;
+  border: 1px solid rgba(246, 202, 100, 0.22);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: #ffe39b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(246, 202, 100, 0.08);
+}
+
+.feedItem {
+  position: relative;
+  min-height: 76px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(20, 20, 20, 0.96), rgba(10, 10, 10, 0.98));
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.feedItemNew {
+  border-color: rgba(214, 40, 57, 0.56);
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(214, 40, 57, 0.18),
+    0 0 24px rgba(214, 40, 57, 0.16);
+  transform: translateY(-2px);
+  animation: liveEntry 1.1s ease;
+}
+
+.feedItemCompact {
+  min-height: 64px;
+}
+
+.feedPulseTag {
+  display: inline-flex;
+  margin-left: 8px;
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #fff0f2;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(214, 40, 57, 0.16);
+}
+
+.liveToast {
+  position: fixed;
+  right: 28px;
+  bottom: 24px;
+  z-index: 40;
+  min-width: 280px;
+  max-width: 360px;
+  border: 1px solid rgba(214, 40, 57, 0.38);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(16, 10, 12, 0.97), rgba(8, 8, 8, 0.99));
+  padding: 14px 16px;
+  box-shadow:
+    0 26px 50px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(214, 40, 57, 0.14);
+  animation: toastIn 360ms ease;
+}
+
+.liveToast.tv {
+  top: 18px;
+  right: 18px;
+  bottom: auto;
+}
+
+.liveToastLabel {
+  display: block;
+  color: #ffe3e7;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.liveToast strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 18px;
+}
+
+.liveToast p {
+  margin: 5px 0 0;
+  color: var(--soft);
+  font-size: 13px;
+}
+
+.managementHero {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.managementHero article {
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(22, 22, 22, 0.97), rgba(9, 9, 9, 0.98));
+}
+
+.marketingHeader {
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(18, 18, 18, 0.97), rgba(9, 9, 9, 0.98));
+}
+
+.marketingControls,
+.marketingGlossary {
+  border-color: rgba(90, 109, 132, 0.22);
+}
+
+.marketingSection {
+  gap: 12px;
+}
+
+.marketingAnalysisGrid .managementPanel,
+.marketingOperationalGrid .managementPanel {
+  min-height: 100%;
+}
+
+.tvHeader h2 {
+  font-size: 34px;
+}
+
+.tvHero {
+  grid-template-columns: minmax(380px, 1.45fr) repeat(4, minmax(150px, 0.6fr));
+}
+
+.tvTotal {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(214, 40, 57, 0.26), transparent 24%),
+    radial-gradient(circle at 15% 85%, rgba(255, 255, 255, 0.05), transparent 28%),
+    linear-gradient(180deg, #171111, #0b0b0b 76%);
+}
+
+.tvMetric {
+  border-radius: 18px;
+  min-height: 182px;
+}
+
+.tvBody {
+  grid-template-columns: minmax(560px, 1.25fr) minmax(380px, 0.86fr) minmax(280px, 0.64fr);
+}
+
+.tvFooter {
+  border-radius: 18px;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes liveEntry {
+  0% {
+    transform: translateY(8px) scale(0.98);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-2px) scale(1.01);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sweepGlow {
+  0% {
+    left: -130%;
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    left: 155%;
+    opacity: 0;
+  }
+}
+
+@media (max-width: 1180px) {
+  .heroGrid,
+  .tvHero {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tvBody {
+    grid-template-columns: 1fr;
+  }
+
+  .tvMiniBoard,
+  .heroMicroGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .topBar {
+    position: static;
+    padding: 14px;
+  }
+
+  .heroGrid,
+  .tvHero,
+  .pulseGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .liveToast {
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .heroCard:hover,
+  .heroCard:focus-within,
+  .kpiCard:hover,
+  .kpiCard:focus-within,
+  .miniMetric:hover,
+  .miniMetric:focus-within,
+  .rankingBoard:hover,
+  .rankingBoard:focus-within,
+  .dailyPanel:hover,
+  .dailyPanel:focus-within,
+  .liveFeed:hover,
+  .liveFeed:focus-within,
+  .managementHero article:hover,
+  .managementHero article:focus-within,
+  .managementPanel:hover,
+  .managementPanel:focus-within,
+  .marketingHeader:hover,
+  .marketingHeader:focus-within,
+  .tvMetric:hover,
+  .tvMetric:focus-within,
+  .tvTotal:hover,
+  .tvTotal:focus-within,
+  .tvRankings:hover,
+  .tvRankings:focus-within,
+  .tvBody > section:hover,
+  .tvBody > section:focus-within {
+    transform: none;
+  }
+}

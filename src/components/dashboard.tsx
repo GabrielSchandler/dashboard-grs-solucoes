@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Equipe = "COMERCIAL" | "JURIDICO";
 type View = "tv" | "operacao" | "gestao" | "marketing";
@@ -93,6 +93,11 @@ type TeamSummary = {
   pct: number;
 };
 
+type LiveSaleNotice = {
+  key: string;
+  venda: Venda;
+};
+
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -119,14 +124,44 @@ export default function Dashboard({
 }) {
   const [state, setState] = useState<ApiState>({ status: "loading" });
   const [activeView, setActiveView] = useState<View>(initialView);
+  const [liveSaleNotice, setLiveSaleNotice] = useState<LiveSaleNotice | null>(null);
+  const [highlightedSaleKeys, setHighlightedSaleKeys] = useState<string[]>([]);
+  const previousSaleKeysRef = useRef<Set<string> | null>(null);
+  const clearHighlightsTimerRef = useRef<number | null>(null);
 
   async function load() {
     try {
       const response = await fetch("/api/vendas", { cache: "no-store" });
-      const payload = await response.json();
+      const payload = (await response.json()) as ApiResponse & { error?: string };
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Não foi possível carregar os dados.");
+      }
+
+      const previousSaleKeys = previousSaleKeysRef.current;
+      const newSales = previousSaleKeys
+        ? payload.vendas.filter((venda) => !previousSaleKeys.has(getVendaKey(venda)))
+        : [];
+
+      previousSaleKeysRef.current = new Set(payload.vendas.map(getVendaKey));
+
+      if (newSales.length > 0) {
+        const orderedNewSales = [...newSales].sort((a, b) => sortSalesByRecency(b, a));
+        const latestNewSale = orderedNewSales[0];
+
+        if (clearHighlightsTimerRef.current) {
+          window.clearTimeout(clearHighlightsTimerRef.current);
+        }
+
+        setLiveSaleNotice({
+          key: getVendaKey(latestNewSale),
+          venda: latestNewSale,
+        });
+        setHighlightedSaleKeys(orderedNewSales.map(getVendaKey));
+        clearHighlightsTimerRef.current = window.setTimeout(() => {
+          setHighlightedSaleKeys([]);
+          setLiveSaleNotice(null);
+        }, 7000);
       }
 
       setState({ status: "success", data: payload });
@@ -151,6 +186,14 @@ export default function Dashboard({
     const timer = window.setInterval(() => void load(), refreshMs);
     return () => window.clearInterval(timer);
   }, [state]);
+
+  useEffect(() => {
+    return () => {
+      if (clearHighlightsTimerRef.current) {
+        window.clearTimeout(clearHighlightsTimerRef.current);
+      }
+    };
+  }, []);
 
   if (state.status === "loading") {
     return (
@@ -178,6 +221,8 @@ export default function Dashboard({
     <DashboardReady
       activeView={activeView}
       data={state.data}
+      highlightedSaleKeys={highlightedSaleKeys}
+      liveSaleNotice={liveSaleNotice}
       onRefresh={load}
       onViewChange={setActiveView}
     />
@@ -187,11 +232,15 @@ export default function Dashboard({
 function DashboardReady({
   activeView,
   data,
+  highlightedSaleKeys,
+  liveSaleNotice,
   onRefresh,
   onViewChange,
 }: {
   activeView: View;
   data: ApiResponse;
+  highlightedSaleKeys: string[];
+  liveSaleNotice: LiveSaleNotice | null;
   onRefresh: () => void;
   onViewChange: (view: View) => void;
 }) {
@@ -209,17 +258,25 @@ function DashboardReady({
       }),
     [tvSales, data.meta, currentMonthKey],
   );
+  useNewSaleSound(liveSaleNotice?.key ?? null);
 
   if (activeView === "tv") {
     return (
       <main className="dashboardShell tvShell">
-        <TvView model={model} updatedAt={data.updatedAt} source={data.source} />
+        <TvView
+          highlightedSaleKeys={highlightedSaleKeys}
+          liveSaleNotice={liveSaleNotice}
+          model={model}
+          updatedAt={data.updatedAt}
+          source={data.source}
+        />
       </main>
     );
   }
 
   return (
     <main className="dashboardShell">
+      <LiveSaleToast notice={liveSaleNotice} />
       <Header
         activeView={activeView}
         updatedAt={data.updatedAt}
@@ -228,7 +285,13 @@ function DashboardReady({
         onViewChange={onViewChange}
       />
 
-      {activeView === "operacao" ? <OperationView vendas={data.vendas} meta={data.meta} /> : null}
+      {activeView === "operacao" ? (
+        <OperationView
+          highlightedSaleKeys={highlightedSaleKeys}
+          vendas={data.vendas}
+          meta={data.meta}
+        />
+      ) : null}
       {activeView === "gestao" ? <ManagementView vendas={data.vendas} meta={data.meta} /> : null}
       {activeView === "marketing" ? (
         <MarketingView
@@ -242,7 +305,15 @@ function DashboardReady({
   );
 }
 
-function OperationView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
+function OperationView({
+  vendas,
+  meta,
+  highlightedSaleKeys,
+}: {
+  vendas: Venda[];
+  meta: number;
+  highlightedSaleKeys: string[];
+}) {
   const [periodMode, setPeriodMode] = useState<SalesPeriodMode>("month");
   const [monthFilter, setMonthFilter] = useState(() => getCurrentMonthKey());
   const [rangeStart, setRangeStart] = useState("");
@@ -299,8 +370,13 @@ function OperationView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
         }}
       />
       <section className="heroGrid" aria-label="Indicadores principais">
-        <article className="heroCard heroCardMain">
-          <span className="eyebrow">Faturamento total</span>
+        <article className={`heroCard heroCardMain ${model.goalPct >= 100 ? "goalMet" : ""}`}>
+          <div className="heroCardTop">
+            <span className="eyebrow">Faturamento total</span>
+            <span className={`statusChip ${model.goalPct >= 100 ? "success" : "warn"}`}>
+              {model.goalPct >= 100 ? "Meta batida" : "Ao vivo"}
+            </span>
+          </div>
           <strong>{currency.format(model.total)}</strong>
           <div className="goalLine">
             <span>Meta superação {currency.format(model.meta)}</span>
@@ -308,6 +384,20 @@ function OperationView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
           </div>
           <div className="goalTrack" aria-label={`Meta em ${model.goalPct.toFixed(1)}%`}>
             <i style={{ width: `${model.goalPct}%` }} />
+          </div>
+          <div className="heroMicroGrid">
+            <div>
+              <span>Hoje</span>
+              <strong>{compactCurrency.format(model.revenueToday)}</strong>
+            </div>
+            <div>
+              <span>Vendas hoje</span>
+              <strong>{model.salesToday}</strong>
+            </div>
+            <div>
+              <span>Meta do dia</span>
+              <strong>{compactCurrency.format(model.dailyGoal)}</strong>
+            </div>
           </div>
           <footer>
             {model.remaining > 0
@@ -317,16 +407,16 @@ function OperationView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
         </article>
 
         <KpiCard
-          label="Comercial"
-          value={currency.format(model.totalComercial)}
-          detail={`${model.comercial.length} vendas`}
-          tone="blue"
+          label="ProjeÃ§Ã£o"
+          value={currency.format(model.projectedRevenue)}
+          detail={`MÃ©dia diÃ¡ria ${currency.format(model.averageDailyRevenue)}`}
+          tone={model.projectedRevenue >= model.meta ? "green" : "yellow"}
         />
         <KpiCard
           label="Jurídico"
-          value={currency.format(model.totalJuridico)}
-          detail={`${model.juridico.length} vendas`}
-          tone="green"
+          value={currency.format(Math.abs(model.rhythmDelta))}
+          detail={`Ideal hoje ${currency.format(model.idealRevenueToDate)}`}
+          tone={model.rhythmDelta >= 0 ? "green" : "yellow"}
         />
         <KpiCard
           label="Por dia útil"
@@ -380,17 +470,21 @@ function OperationView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
 
       <section className="wideGrid">
         <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
-        <LiveFeed vendas={model.recentSales} />
+        <LiveFeed highlightedSaleKeys={highlightedSaleKeys} vendas={model.recentSales} />
       </section>
     </div>
   );
 }
 
 function TvView({
+  highlightedSaleKeys,
+  liveSaleNotice,
   model,
   updatedAt,
   source,
 }: {
+  highlightedSaleKeys: string[];
+  liveSaleNotice: LiveSaleNotice | null;
   model: DashboardModel;
   updatedAt: string;
   source: string;
@@ -400,6 +494,7 @@ function TvView({
 
   return (
     <div className="tvScreen">
+      <LiveSaleToast notice={liveSaleNotice} tv />
       <header className="tvHeader">
         <div>
           <span className="livePill"><i />Ao vivo</span>
@@ -417,12 +512,26 @@ function TvView({
       </header>
 
       <section className="tvHero">
-        <article className="tvTotal">
+        <article className={`tvTotal ${model.goalPct >= 100 ? "goalMet" : ""}`}>
           <span>Faturamento total</span>
           <strong>{currency.format(model.total)}</strong>
           <div className="tvGoalRail">
             <i style={{ width: `${model.baseGoalPct}%` }} />
             <b style={{ width: `${model.goalPct}%` }} />
+          </div>
+          <div className="tvMiniBoard">
+            <div>
+              <span>Hoje</span>
+              <strong>{compactCurrency.format(model.revenueToday)}</strong>
+            </div>
+            <div>
+              <span>Vendas</span>
+              <strong>{model.salesToday}</strong>
+            </div>
+            <div>
+              <span>Meta dia</span>
+              <strong>{compactCurrency.format(model.dailyGoal)}</strong>
+            </div>
           </div>
           <footer>
             <span>Base {model.baseGoalPct.toFixed(1)}%</span>
@@ -437,7 +546,7 @@ function TvView({
       <section className="tvBody">
         <TvRankingPanel model={model} />
         <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
-        <LiveFeed vendas={model.recentSales.slice(0, 3)} />
+        <LiveFeed compact highlightedSaleKeys={highlightedSaleKeys} vendas={model.recentSales.slice(0, 4)} />
       </section>
 
       <footer className="tvFooter">
@@ -1088,7 +1197,7 @@ function RankingList({
   compact?: boolean;
 }) {
   const max = ranking[0]?.total ?? 1;
-  const visible = ranking.slice(0, compact ? 5 : 6);
+  const visible = ranking;
 
   return (
     <div className="rankingList">
@@ -1120,6 +1229,7 @@ function DailyRevenuePanel({
   monthLabel: string;
 }) {
   const max = Math.max(...days.map((day) => day.total), 1);
+  const bestDayKey = days.length > 0 ? [...days].sort((a, b) => b.total - a.total)[0]?.data : "";
 
   return (
     <section className="dailyPanel">
@@ -1130,7 +1240,7 @@ function DailyRevenuePanel({
       <div className="dailyRows">
         {days.length > 0 ? (
           days.map((day) => (
-            <div className="dailyRow" key={day.data}>
+            <div className={`dailyRow ${day.data === bestDayKey ? "best" : ""}`} key={day.data}>
               <span>{formatDayMonth(day.data)}</span>
               <div className="dailyBar">
                 <i style={{ width: `${Math.max((day.total / max) * 100, 4)}%` }} />
@@ -1149,20 +1259,39 @@ function DailyRevenuePanel({
   );
 }
 
-function LiveFeed({ vendas }: { vendas: Venda[] }) {
+function LiveFeed({
+  vendas,
+  highlightedSaleKeys = [],
+  compact = false,
+}: {
+  vendas: Venda[];
+  highlightedSaleKeys?: string[];
+  compact?: boolean;
+}) {
+  const visibleSales = vendas.slice(0, compact ? 4 : 8);
+  const highlightSet = new Set(highlightedSaleKeys);
+
   return (
     <section className="liveFeed">
       <div className="sectionHeader">
         <h2>Últimas vendas</h2>
-        <span>Entrada mais recente</span>
+        <span>{highlightSet.size > 0 ? "Nova entrada detectada" : "Entrada mais recente"}</span>
       </div>
       <div className="feedList">
-        {vendas.slice(0, 8).map((venda) => (
-          <article className="feedItem" key={`${venda.equipe}-${venda.data}-${venda.nome}-${venda.cliente}`}>
+        {visibleSales.map((venda) => {
+          const saleKey = getVendaKey(venda);
+          const isNew = highlightSet.has(saleKey);
+
+          return (
+          <article
+            className={`feedItem ${isNew ? "feedItemNew" : ""} ${compact ? "feedItemCompact" : ""}`}
+            key={saleKey}
+          >
             <div>
               <span className={`teamTag ${venda.equipe === "COMERCIAL" ? "teamCom" : "teamJur"}`}>
                 {formatTeamName(venda.equipe)}
               </span>
+              {isNew ? <span className="feedPulseTag">Nova venda</span> : null}
               <strong>{venda.nome}</strong>
               <p>{venda.cliente}</p>
             </div>
@@ -1171,9 +1300,106 @@ function LiveFeed({ vendas }: { vendas: Venda[] }) {
               <small>{formatDayMonth(venda.data)}</small>
             </div>
           </article>
-        ))}
+        )})}
       </div>
     </section>
+  );
+}
+
+function LiveSaleToast({
+  notice,
+  tv,
+}: {
+  notice: LiveSaleNotice | null;
+  tv?: boolean;
+}) {
+  if (!notice) {
+    return null;
+  }
+
+  return (
+    <aside className={`liveToast ${tv ? "tv" : ""}`} aria-live="polite">
+      <span className="liveToastLabel">Nova venda realizada</span>
+      <strong>{notice.venda.nome}</strong>
+      <p>
+        {notice.venda.cliente} • {compactCurrency.format(notice.venda.meta)}
+      </p>
+    </aside>
+  );
+}
+
+function useNewSaleSound(triggerKey: string | null) {
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const unlockedRef = useRef(false);
+
+  useEffect(() => {
+    const AudioConstructor =
+      window.AudioContext ??
+      (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+
+    function unlockAudio() {
+      unlockedRef.current = true;
+
+      if (!audioContextRef.current && AudioConstructor) {
+        audioContextRef.current = new AudioConstructor();
+      }
+
+      void audioContextRef.current?.resume().catch(() => {});
+    }
+
+    window.addEventListener("pointerdown", unlockAudio, { passive: true });
+    window.addEventListener("keydown", unlockAudio);
+
+    return () => {
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!triggerKey || !unlockedRef.current || !audioContextRef.current) {
+      return;
+    }
+
+    const context = audioContextRef.current;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(740, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(880, context.currentTime + 0.14);
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.045, context.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.24);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.25);
+
+    return () => {
+      oscillator.disconnect();
+      gain.disconnect();
+    };
+  }, [triggerKey]);
+}
+
+function getVendaKey(venda: Venda) {
+  return [
+    venda.equipe,
+    venda.data,
+    venda.nome.trim(),
+    venda.cliente.trim(),
+    venda.meta,
+  ].join("|");
+}
+
+function sortSalesByRecency(a: Venda, b: Venda) {
+  return (
+    a.data.localeCompare(b.data) ||
+    a.nome.localeCompare(b.nome) ||
+    a.cliente.localeCompare(b.cliente)
   );
 }
 
@@ -1298,6 +1524,12 @@ function MarketingView({
     sourceFilter === "todos"
       ? "Todos os parceiros"
       : marketingSourceOptions.find((item) => item.value === sourceFilter)?.label ?? "Parceiro";
+  const bestSourceInsight =
+    [...sourceInsights].sort((a, b) => {
+      const rateA = a.total > 0 ? a.qualified / a.total : 0;
+      const rateB = b.total > 0 ? b.qualified / b.total : 0;
+      return rateB - rateA || b.qualified - a.qualified;
+    })[0] ?? null;
   function clearMarketingFilters() {
     setPeriodMode("month");
     setMonthFilter(getCurrentMonthKey());
@@ -1467,6 +1699,16 @@ function MarketingView({
             )}`}
             tone="blue"
           />
+          <KpiCard
+            label="Origem destaque"
+            value={bestSourceInsight?.label ?? waitingForData}
+            detail={
+              bestSourceInsight
+                ? `${bestSourceInsight.qualified} vendas / ${bestSourceInsight.total} leads`
+                : "Sem base suficiente"
+            }
+            tone="green"
+          />
         </div>
       </section>
 
@@ -1524,6 +1766,7 @@ function MarketingView({
             hasWorked={actionSummary.hasActionData}
             hasConverted={financials.hasConversion}
           />
+          <LeadQualityPanel leads={filteredLeads} />
         </div>
       </section>
 
@@ -2424,6 +2667,10 @@ function buildDashboardModel(
 ) {
   const comercial = vendas.filter((venda) => venda.equipe === "COMERCIAL");
   const juridico = vendas.filter((venda) => venda.equipe === "JURIDICO");
+  const todayKey = getRelativeDateKey(0);
+  const yesterdayKey = getRelativeDateKey(-1);
+  const todaySales = vendas.filter((venda) => venda.data === todayKey);
+  const yesterdaySales = vendas.filter((venda) => venda.data === yesterdayKey);
   const totalComercial = sum(comercial);
   const totalJuridico = sum(juridico);
   const total = totalComercial + totalJuridico;
@@ -2444,6 +2691,13 @@ function buildDashboardModel(
   const rhythmDelta = total - idealRevenueToDate;
   const requiredPerRemainingWorkday =
     workdays.remaining > 0 ? Math.max(meta - total, 0) / workdays.remaining : 0;
+  const revenueToday = sum(todaySales);
+  const revenueYesterday = sum(yesterdaySales);
+  const salesToday = todaySales.length;
+  const salesYesterday = yesterdaySales.length;
+  const dailyGoal = workdays.total > 0 ? meta / workdays.total : 0;
+  const todayDelta = revenueToday - revenueYesterday;
+  const bestSellerToday = rankBySeller(todaySales)[0] ?? null;
   const teamSummary = [
     makeTeamSummary("Comercial", totalComercial, comercial.length, total),
     makeTeamSummary("Jurídico", totalJuridico, juridico.length, total),
@@ -2476,10 +2730,17 @@ function buildDashboardModel(
     elapsedWorkdays: workdays.elapsed,
     remainingWorkdays: workdays.remaining,
     averageDailyRevenue,
+    bestSellerToday,
+    dailyGoal,
     projectedRevenue,
     idealRevenueToDate,
+    revenueToday,
+    revenueYesterday,
     rhythmDelta,
     requiredPerRemainingWorkday,
+    salesToday,
+    salesYesterday,
+    todayDelta,
   };
 }
 
