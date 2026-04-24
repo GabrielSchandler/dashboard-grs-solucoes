@@ -268,6 +268,7 @@ function DashboardReady({
           highlightedSaleKeys={highlightedSaleKeys}
           liveSaleNotice={liveSaleNotice}
           model={model}
+          onViewChange={onViewChange}
           onRefresh={onRefresh}
           updatedAt={data.updatedAt}
           source={data.source}
@@ -487,6 +488,7 @@ function TvView({
   highlightedSaleKeys,
   liveSaleNotice,
   model,
+  onViewChange,
   onRefresh,
   updatedAt,
   source,
@@ -494,6 +496,7 @@ function TvView({
   highlightedSaleKeys: string[];
   liveSaleNotice: LiveSaleNotice | null;
   model: DashboardModel;
+  onViewChange: (view: View) => void;
   onRefresh: () => void;
   updatedAt: string;
   source: string;
@@ -521,6 +524,9 @@ function TvView({
         <div className="tvRefreshBox">
           <button className="refreshButton" type="button" onClick={onRefresh}>
             Atualizar
+          </button>
+          <button className="refreshButton" type="button" onClick={() => onViewChange("operacao")}>
+            Voltar
           </button>
         </div>
       </header>

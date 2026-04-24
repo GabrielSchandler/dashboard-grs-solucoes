@@ -1065,8 +1065,10 @@ button {
   min-width: 142px;
   padding: 12px 14px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .tvRefreshBox .refreshButton {
