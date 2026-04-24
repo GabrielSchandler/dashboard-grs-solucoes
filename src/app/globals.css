@@ -2477,6 +2477,102 @@ body {
   font-size: 13px;
 }
 
+.saleCelebration {
+  position: fixed;
+  inset: 0;
+  z-index: 38;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.saleCelebrationFlash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 26%),
+    radial-gradient(circle at center, rgba(214, 40, 57, 0.22), transparent 58%);
+  animation: celebrationFlash 900ms ease-out;
+}
+
+.saleCelebrationGlow {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(214, 40, 57, 0.08), transparent 22%, transparent 78%, rgba(214, 40, 57, 0.08)),
+    linear-gradient(180deg, rgba(214, 40, 57, 0.12), transparent 22%, transparent 78%, rgba(255, 255, 255, 0.08));
+  animation: celebrationGlow 1.8s ease-out;
+}
+
+.saleCelebrationBanner {
+  position: absolute;
+  top: 11%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 320px;
+  max-width: min(720px, calc(100vw - 40px));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.3), transparent 36%),
+    linear-gradient(180deg, rgba(18, 12, 14, 0.96), rgba(9, 9, 9, 0.98));
+  padding: 18px 24px;
+  text-align: center;
+  box-shadow:
+    0 28px 60px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(214, 40, 57, 0.16),
+    0 0 48px rgba(214, 40, 57, 0.18);
+  animation: bannerPop 1.1s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.saleCelebrationBanner span {
+  display: block;
+  color: #ffe5e8;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.saleCelebrationBanner strong {
+  display: block;
+  margin-top: 8px;
+  color: #ffffff;
+  font-size: clamp(28px, 4vw, 52px);
+  line-height: 1;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+}
+
+.saleCelebrationBanner p {
+  margin: 10px 0 0;
+  color: #f0d4d8;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.fireworkBurst {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+}
+
+.fireworkBurst i {
+  --angle: 0deg;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 70px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #ffb7bf 35%, #d62839 100%);
+  transform-origin: center top;
+  transform: translate(-50%, -100%) rotate(var(--angle)) scaleY(0.2);
+  opacity: 0;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.24);
+  animation: fireworkRay 1.1s ease-out forwards;
+}
+
 .managementHero {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
@@ -2578,6 +2674,59 @@ body {
   100% {
     left: 155%;
     opacity: 0;
+  }
+}
+
+@keyframes celebrationFlash {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes celebrationGlow {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes bannerPop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(18px) scale(0.88);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-3px) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes fireworkRay {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -100%) rotate(var(--angle)) scaleY(0.18);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100%) rotate(var(--angle)) translateY(-38px) scaleY(1);
   }
 }
 

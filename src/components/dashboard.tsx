@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 type Equipe = "COMERCIAL" | "JURIDICO";
 type View = "tv" | "operacao" | "gestao" | "marketing";
@@ -277,6 +277,9 @@ function DashboardReady({
   return (
     <main className="dashboardShell">
       <LiveSaleToast notice={liveSaleNotice} />
+      {activeView === "operacao" ? (
+        <SaleCelebrationOverlay key={liveSaleNotice?.key ?? "idle"} notice={liveSaleNotice} />
+      ) : null}
       <Header
         activeView={activeView}
         updatedAt={data.updatedAt}
@@ -1328,6 +1331,45 @@ function LiveSaleToast({
   );
 }
 
+function SaleCelebrationOverlay({ notice }: { notice: LiveSaleNotice | null }) {
+  if (!notice) {
+    return null;
+  }
+
+  const bursts = Array.from({ length: 6 }, (_, index) => ({
+    id: index,
+    style: {
+      left: `${10 + index * 15}%`,
+      top: `${index % 2 === 0 ? 20 : 42}%`,
+      animationDelay: `${index * 90}ms`,
+    },
+  }));
+
+  return (
+    <div className="saleCelebration" aria-hidden="true">
+      <div className="saleCelebrationFlash" />
+      <div className="saleCelebrationGlow" />
+      <div className="saleCelebrationBanner">
+        <span>Venda confirmada</span>
+        <strong>{notice.venda.nome}</strong>
+        <p>
+          {notice.venda.cliente} • {compactCurrency.format(notice.venda.meta)}
+        </p>
+      </div>
+      {bursts.map((burst) => (
+        <div className="fireworkBurst" key={burst.id} style={burst.style}>
+          {Array.from({ length: 10 }, (_, particle) => (
+            <i
+              key={particle}
+              style={{ "--angle": `${particle * 36}deg` } as CSSProperties}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function useNewSaleSound(triggerKey: string | null) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const unlockedRef = useRef(false);
@@ -1363,24 +1405,69 @@ function useNewSaleSound(triggerKey: string | null) {
     }
 
     const context = audioContextRef.current;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
+    const master = context.createGain();
+    master.gain.setValueAtTime(0.0001, context.currentTime);
+    master.gain.exponentialRampToValueAtTime(0.09, context.currentTime + 0.02);
+    master.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 1.1);
+    master.connect(context.destination);
 
-    oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(740, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(880, context.currentTime + 0.14);
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.045, context.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.24);
+    const lead = context.createOscillator();
+    const harmony = context.createOscillator();
+    const sub = context.createOscillator();
 
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.25);
+    lead.type = "triangle";
+    harmony.type = "sawtooth";
+    sub.type = "sine";
+
+    lead.frequency.setValueAtTime(660, context.currentTime);
+    lead.frequency.exponentialRampToValueAtTime(990, context.currentTime + 0.18);
+    lead.frequency.exponentialRampToValueAtTime(1320, context.currentTime + 0.42);
+
+    harmony.frequency.setValueAtTime(880, context.currentTime);
+    harmony.frequency.exponentialRampToValueAtTime(1175, context.currentTime + 0.26);
+    harmony.frequency.exponentialRampToValueAtTime(1568, context.currentTime + 0.48);
+
+    sub.frequency.setValueAtTime(220, context.currentTime);
+    sub.frequency.exponentialRampToValueAtTime(110, context.currentTime + 0.52);
+
+    const leadGain = context.createGain();
+    const harmonyGain = context.createGain();
+    const subGain = context.createGain();
+
+    leadGain.gain.setValueAtTime(0.0001, context.currentTime);
+    leadGain.gain.exponentialRampToValueAtTime(0.8, context.currentTime + 0.04);
+    leadGain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.7);
+
+    harmonyGain.gain.setValueAtTime(0.0001, context.currentTime + 0.06);
+    harmonyGain.gain.exponentialRampToValueAtTime(0.35, context.currentTime + 0.14);
+    harmonyGain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.74);
+
+    subGain.gain.setValueAtTime(0.0001, context.currentTime);
+    subGain.gain.exponentialRampToValueAtTime(0.2, context.currentTime + 0.08);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.85);
+
+    lead.connect(leadGain);
+    harmony.connect(harmonyGain);
+    sub.connect(subGain);
+    leadGain.connect(master);
+    harmonyGain.connect(master);
+    subGain.connect(master);
+
+    lead.start();
+    harmony.start(context.currentTime + 0.03);
+    sub.start();
+    lead.stop(context.currentTime + 0.72);
+    harmony.stop(context.currentTime + 0.76);
+    sub.stop(context.currentTime + 0.92);
 
     return () => {
-      oscillator.disconnect();
-      gain.disconnect();
+      lead.disconnect();
+      harmony.disconnect();
+      sub.disconnect();
+      leadGain.disconnect();
+      harmonyGain.disconnect();
+      subGain.disconnect();
+      master.disconnect();
     };
   }, [triggerKey]);
 }
