@@ -1022,7 +1022,7 @@ button {
 
 .tvHeader {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 12px;
 }
@@ -1043,6 +1043,7 @@ button {
 
 .tvTime,
 .tvWeather,
+.tvRefreshBox,
 .tvMetric,
 .tvTotal,
 .tvBody > section,
@@ -1058,6 +1059,18 @@ button {
   min-width: 142px;
   padding: 12px 14px;
   text-align: right;
+}
+
+.tvRefreshBox {
+  min-width: 142px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tvRefreshBox .refreshButton {
+  width: 100%;
 }
 
 .tvTime strong,

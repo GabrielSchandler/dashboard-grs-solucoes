@@ -268,6 +268,7 @@ function DashboardReady({
           highlightedSaleKeys={highlightedSaleKeys}
           liveSaleNotice={liveSaleNotice}
           model={model}
+          onRefresh={onRefresh}
           updatedAt={data.updatedAt}
           source={data.source}
         />
@@ -486,12 +487,14 @@ function TvView({
   highlightedSaleKeys,
   liveSaleNotice,
   model,
+  onRefresh,
   updatedAt,
   source,
 }: {
   highlightedSaleKeys: string[];
   liveSaleNotice: LiveSaleNotice | null;
   model: DashboardModel;
+  onRefresh: () => void;
   updatedAt: string;
   source: string;
 }) {
@@ -514,6 +517,11 @@ function TvView({
         <div className="tvWeather">
           <strong>{weather.temp === null ? "--" : `${Math.round(weather.temp)} C`}</strong>
           <span>{weather.error ?? weather.label}</span>
+        </div>
+        <div className="tvRefreshBox">
+          <button className="refreshButton" type="button" onClick={onRefresh}>
+            Atualizar
+          </button>
         </div>
       </header>
 
