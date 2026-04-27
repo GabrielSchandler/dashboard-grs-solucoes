@@ -2892,3 +2892,349 @@ body {
     transform: none;
   }
 }
+
+.periodToolbar,
+.marketingHeaderWide {
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.toolbarSummary {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.toolbarSummary h2 {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.toolbarSummary p {
+  max-width: 56ch;
+  margin: 0;
+  color: var(--soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.toolbarPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.toolbarPill,
+.filterStatusBadge,
+.periodSummaryTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border: 1px solid rgba(214, 40, 57, 0.18);
+  border-radius: 999px;
+  padding: 0 10px;
+  color: #f6dce1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(214, 40, 57, 0.08);
+}
+
+.toolbarPillActive,
+.periodSummaryTag {
+  border-color: rgba(214, 40, 57, 0.36);
+  color: #ffffff;
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.22), transparent 52%),
+    linear-gradient(180deg, rgba(214, 40, 57, 0.22), rgba(214, 40, 57, 0.08));
+}
+
+.periodToolbar .marketingControls,
+.marketingHeaderWide .marketingControls {
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.marketingFilterToolbar {
+  display: grid;
+  grid-template-columns: minmax(168px, 0.92fr) minmax(212px, 1fr) minmax(220px, 1.14fr) minmax(156px, 0.78fr);
+  align-items: start;
+  justify-content: stretch;
+  gap: 10px;
+}
+
+.marketingFilterGroup.filterCard {
+  min-width: 0;
+  align-content: stretch;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(90, 109, 132, 0.18);
+  border-left: 1px solid rgba(90, 109, 132, 0.18);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(18, 18, 18, 0.96), rgba(8, 8, 8, 0.98));
+}
+
+.marketingFilterGroup.filterCard:first-child {
+  padding-left: 12px;
+}
+
+.marketingSegmentGroup {
+  grid-column: span 1;
+}
+
+.filterGroupLabel {
+  letter-spacing: 0.08em;
+  font-size: 9px;
+}
+
+.quickPeriodTabs,
+.periodPickers,
+.filterActions,
+.marketingTabs {
+  justify-content: flex-start;
+}
+
+.periodPickers {
+  gap: 6px;
+}
+
+.periodPickers label {
+  min-width: 0;
+}
+
+.periodPickers input,
+.periodPickers select,
+.quickPeriodTabs button,
+.filterActions button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(9, 9, 9, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.periodPickers input,
+.periodPickers select {
+  width: 100%;
+  color: var(--text);
+  color-scheme: dark;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.quickPeriodTabs button,
+.filterActions button {
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.filterActionsStack {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterActionsStack .filterStatusBadge {
+  grid-column: 1 / -1;
+}
+
+.quickPeriodTabs {
+  padding: 3px;
+  border-radius: 10px;
+}
+
+.periodPickers label span {
+  font-size: 9px;
+}
+
+.filterClear,
+.filterSecondary {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+}
+
+.filterClear:hover,
+.filterSecondary:hover {
+  border-color: rgba(214, 40, 57, 0.42);
+  background: rgba(214, 40, 57, 0.12);
+}
+
+.filterHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.periodSummaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid rgba(90, 109, 132, 0.16);
+  padding-top: 8px;
+}
+
+.periodSummary {
+  border-top: 0;
+  padding-top: 0;
+  text-align: left;
+  font-size: 11px;
+}
+
+.operationPulseGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.operationFeatureGrid,
+.operationAnalysisGrid {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.operationFeatureGrid {
+  grid-template-columns: minmax(520px, 1.18fr) minmax(360px, 0.82fr);
+  align-items: start;
+}
+
+.operationAnalysisGrid {
+  grid-template-columns: minmax(520px, 1.06fr) minmax(320px, 0.94fr);
+}
+
+.operationRankingStack {
+  display: grid;
+  gap: 14px;
+}
+
+.operationFeatureGrid .liveFeed,
+.operationRankingStack .rankingBoard,
+.operationAnalysisGrid > * {
+  min-height: 100%;
+}
+
+.managementHero {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.managementHeroPrimary {
+  border-color: rgba(214, 40, 57, 0.32);
+  background:
+    radial-gradient(circle at top right, rgba(214, 40, 57, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(24, 16, 18, 0.98), rgba(8, 8, 8, 0.98));
+}
+
+.managementHeroStatus h2 {
+  font-size: clamp(30px, 2.5vw, 38px);
+}
+
+.managementHeroStatus.good {
+  border-color: rgba(214, 40, 57, 0.36);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(214, 40, 57, 0.14);
+}
+
+.managementHeroStatus.warn {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.managementCommandGrid {
+  grid-template-columns: minmax(420px, 1.05fr) minmax(420px, 0.95fr);
+}
+
+.managementSupportGrid {
+  grid-template-columns: minmax(420px, 0.92fr) minmax(520px, 1.08fr);
+}
+
+.paceRows {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.marketingKpisPrimary {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.marketingFinanceGrid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.marketingSecondaryGrid .miniMetric {
+  min-height: 124px;
+}
+
+.marketingOperationalGrid {
+  grid-template-columns: minmax(620px, 1.18fr) minmax(300px, 0.82fr);
+}
+
+.marketingAnalysisGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.marketingAnalysisGrid .dailyPanel,
+.marketingAnalysisGrid .managementPanel {
+  grid-column: auto;
+}
+
+.marketingHeaderWide .toolbarSummary h2 {
+  font-size: clamp(30px, 3.2vw, 44px);
+}
+
+.marketingHeaderWide .toolbarSummary p {
+  max-width: 46ch;
+}
+
+@media (max-width: 1280px) {
+  .periodToolbar,
+  .marketingHeaderWide,
+  .operationFeatureGrid,
+  .operationAnalysisGrid,
+  .managementCommandGrid,
+  .managementSupportGrid,
+  .marketingOperationalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .marketingFilterToolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .marketingSegmentGroup {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .toolbarPills,
+  .periodSummaryRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .marketingFilterToolbar,
+  .filterActionsStack,
+  .operationPulseGrid,
+  .paceRows {
+    grid-template-columns: 1fr;
+  }
+
+  .marketingFilterGroup.filterCard {
+    padding: 10px;
+  }
+
+  .filterActionsStack .filterStatusBadge {
+    grid-column: auto;
+  }
+}

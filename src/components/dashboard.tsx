@@ -336,10 +336,14 @@ function OperationView({
       }),
     [periodConfig, meta],
   );
+  const todayComparisonLabel =
+    model.todayDelta >= 0 ? "Hoje acima de ontem" : "Hoje abaixo de ontem";
 
   return (
     <div className="operationScreen">
       <SalesPeriodToolbar
+        description="Ajuste o recorte da operação sem perder a leitura dos KPIs e do fluxo ao vivo."
+        eyebrow="Operação"
         monthFilter={monthFilter}
         monthOptions={monthOptions}
         periodMode={periodMode}
@@ -417,16 +421,16 @@ function OperationView({
           tone={model.projectedRevenue >= model.meta ? "green" : "yellow"}
         />
         <KpiCard
-          label={model.rhythmDelta >= 0 ? "Acima do ritmo" : "Abaixo do ritmo"}
+          label={model.rhythmDelta >= 0 ? "No ritmo da meta" : "Abaixo do ritmo"}
           value={currency.format(Math.abs(model.rhythmDelta))}
-          detail={`Ideal hoje ${currency.format(model.idealRevenueToDate)}`}
+          detail={`Ideal até hoje ${currency.format(model.idealRevenueToDate)}`}
           tone={model.rhythmDelta >= 0 ? "green" : "yellow"}
         />
         <KpiCard
-          label="Por dia útil"
-          value={currency.format(model.requiredPerRemainingWorkday)}
-          detail={`${model.remainingWorkdays} dias úteis restantes`}
-          tone="red"
+          label={todayComparisonLabel}
+          value={currency.format(Math.abs(model.todayDelta))}
+          detail={`${compactCurrency.format(model.revenueToday)} hoje / ${compactCurrency.format(model.revenueYesterday)} ontem`}
+          tone={model.todayDelta >= 0 ? "green" : "yellow"}
         />
         <KpiCard
           label="Melhor vendedor"
@@ -440,16 +444,16 @@ function OperationView({
         />
       </section>
 
-      <section className="pulseGrid">
+      <section className="pulseGrid operationPulseGrid">
         <MiniMetric
           label="Meta base"
           value={`${model.baseGoalPct.toFixed(1)}%`}
           detail={`${currency.format(model.total)} de ${currency.format(model.baseGoal)}`}
         />
         <MiniMetric
-          label={model.rhythmDelta >= 0 ? "Acima do ritmo" : "Abaixo do ritmo"}
-          value={currency.format(Math.abs(model.rhythmDelta))}
-          detail={`Ideal ate hoje ${currency.format(model.idealRevenueToDate)}`}
+          label="Por dia útil"
+          value={currency.format(model.requiredPerRemainingWorkday)}
+          detail={`${model.remainingWorkdays} dias úteis restantes`}
         />
         <MiniMetric
           label="Melhor dia"
@@ -457,28 +461,35 @@ function OperationView({
           detail={model.bestDay ? formatDayMonth(model.bestDay.data) : "Sem movimento"}
         />
         <MiniMetric
-          label="Ticket medio"
+          label="Ticket médio"
           value={currency.format(model.averageTicket)}
-          detail={`${model.vendas.length} vendas no mês`}
+          detail={`${model.vendas.length} vendas no período`}
         />
       </section>
 
-      <section className="operationGrid">
-        <RankingBoard
-          title="Ranking comercial"
-          month={model.rankComercialMonth}
-          week={model.rankComercialWeek}
-        />
-        <RankingBoard
-          title="Ranking jurídico"
-          month={model.rankJuridicoMonth}
-          week={model.rankJuridicoWeek}
-        />
-      </section>
-
-      <section className="wideGrid">
-        <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
+      <section className="operationFeatureGrid">
         <LiveFeed highlightedSaleKeys={highlightedSaleKeys} vendas={model.recentSales} />
+        <div className="operationRankingStack">
+          <RankingBoard
+            title="Ranking comercial"
+            month={model.rankComercialMonth}
+            week={model.rankComercialWeek}
+          />
+          <RankingBoard
+            title="Ranking jurídico"
+            month={model.rankJuridicoMonth}
+            week={model.rankJuridicoWeek}
+          />
+        </div>
+      </section>
+
+      <section className="operationAnalysisGrid">
+        <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
+        <TeamComparison
+          subtitle="Participação da receita no período"
+          teams={model.teamSummary}
+          title="Comercial x Jurídico"
+        />
       </section>
     </div>
   );
@@ -503,6 +514,7 @@ function TvView({
 }) {
   const clock = useClock();
   const weather = useWeather();
+  const sourceLabel = formatSourceLabel(source, "sales");
 
   return (
     <div className="tvScreen">
@@ -576,7 +588,7 @@ function TvView({
             : `Faltam ${currency.format(model.remaining)} para a festa`}
         </strong>
         <span>
-          Atualizado {new Date(updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} / {source}
+          Atualizado {new Date(updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} / {sourceLabel}
         </span>
       </footer>
     </div>
@@ -699,6 +711,7 @@ function Header({
 }) {
   const clock = useClock();
   const weather = useWeather();
+  const sourceLabel = formatSourceLabel(source, "sales");
 
   return (
     <header className="topBar">
@@ -764,7 +777,7 @@ function Header({
               minute: "2-digit",
             })}
             <br />
-            {source}
+            {sourceLabel}
           </small>
         ) : null}
         {onRefresh ? (
@@ -784,6 +797,8 @@ function SalesPeriodToolbar({
   rangeStart,
   rangeEnd,
   summary,
+  eyebrow = "Período",
+  description = "Selecione mês ou intervalo personalizado.",
   onMonthChange,
   onQuickModeChange,
   onRangeStartChange,
@@ -796,22 +811,30 @@ function SalesPeriodToolbar({
   rangeStart: string;
   rangeEnd: string;
   summary: string;
+  eyebrow?: string;
+  description?: string;
   onMonthChange: (value: string) => void;
   onQuickModeChange: (mode: Exclude<SalesPeriodMode, "range">) => void;
   onRangeStartChange: (value: string) => void;
   onRangeEndChange: (value: string) => void;
   onReset: () => void;
 }) {
+  const activeModeLabel = getSalesPeriodModeLabel(periodMode);
+
   return (
-    <section className="marketingHeader">
-      <div>
-        <span className="eyebrow">Período</span>
+    <section className="marketingHeader periodToolbar">
+      <div className="toolbarSummary">
+        <span className="eyebrow">{eyebrow}</span>
         <h2>{summary}</h2>
-        <p>Selecione mês ou intervalo personalizado.</p>
+        <p>{description}</p>
+        <div className="toolbarPills">
+          <span className="toolbarPill toolbarPillActive">Modo {activeModeLabel}</span>
+          <span className="toolbarPill">Aplicação imediata</span>
+        </div>
       </div>
       <div className="marketingControls" aria-label="Controles de período">
         <div className="marketingFilterToolbar">
-          <div className="marketingFilterGroup">
+          <div className="marketingFilterGroup filterCard">
             <span className="filterGroupLabel">Período rápido</span>
             <div className="quickPeriodTabs">
               {[
@@ -831,11 +854,11 @@ function SalesPeriodToolbar({
             </div>
           </div>
 
-          <div className="marketingFilterGroup marketingDateGroup">
+          <div className="marketingFilterGroup marketingDateGroup filterCard">
             <span className="filterGroupLabel">Meses</span>
             <div className="periodPickers">
               <label>
-                <span>Mês</span>
+                <span>Mês de referência</span>
                 <select
                   aria-label="Selecionar mês"
                   value={monthFilter}
@@ -851,7 +874,7 @@ function SalesPeriodToolbar({
             </div>
           </div>
 
-          <div className="marketingFilterGroup marketingDateGroup">
+          <div className="marketingFilterGroup marketingDateGroup filterCard">
             <span className="filterGroupLabel">Período personalizado</span>
             <div className="periodPickers">
               <label>
@@ -875,28 +898,71 @@ function SalesPeriodToolbar({
             </div>
           </div>
 
-          <div className="marketingFilterGroup marketingActionGroup">
+          <div className="marketingFilterGroup marketingActionGroup filterCard">
             <span className="filterGroupLabel">Ações</span>
-            <div className="filterActions">
+            <div className="filterActions filterActionsStack">
               <button className="filterClear" type="button" onClick={onReset}>
                 Voltar para mês atual
               </button>
-              <button className="filterApply" disabled type="button">
-                {periodMode === "range"
-                  ? "Período ativo"
-                  : periodMode === "today"
-                    ? "Hoje ativo"
-                    : periodMode === "yesterday"
-                      ? "Ontem ativo"
-                      : "Mês ativo"}
-              </button>
+              <span className="filterStatusBadge">{activeModeLabel}</span>
             </div>
+            <p className="filterHint">Os filtros são aplicados automaticamente.</p>
           </div>
         </div>
-        <span className="periodSummary">Exibindo: {summary}</span>
+        <div className="periodSummaryRow">
+          <span className="periodSummary">Exibindo {summary}</span>
+        </div>
       </div>
     </section>
   );
+}
+
+function getSalesPeriodModeLabel(mode: SalesPeriodMode) {
+  switch (mode) {
+    case "today":
+      return "Hoje";
+    case "yesterday":
+      return "Ontem";
+    case "range":
+      return "Intervalo";
+    default:
+      return "Mês";
+  }
+}
+
+function getMarketingModeLabel(mode: MarketingPeriodMode) {
+  switch (mode) {
+    case "today":
+      return "Hoje";
+    case "yesterday":
+      return "Ontem";
+    case "range":
+      return "Intervalo";
+    default:
+      return "Mês";
+  }
+}
+
+function formatSourceLabel(source: string | undefined, kind: "sales" | "leads") {
+  if (!source) {
+    return kind === "sales" ? "Base sincronizada" : "Base de leads sincronizada";
+  }
+
+  const normalized = normalizeText(source);
+
+  if (normalized.includes("local_excel_path") || normalized.includes("local_leads_excel_path")) {
+    return kind === "sales" ? "Base local sincronizada" : "Base local de leads";
+  }
+
+  if (normalized.includes("sharepoint")) {
+    return kind === "sales" ? "SharePoint sincronizado" : "SharePoint de leads";
+  }
+
+  if (source.includes("\\") || source.includes("/")) {
+    return kind === "sales" ? "Planilha sincronizada" : "Planilha de leads";
+  }
+
+  return source;
 }
 
 function ManagementView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
@@ -923,10 +989,34 @@ function ManagementView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
     teamFilter === "TODOS"
       ? model.recentSales
       : model.recentSales.filter((venda) => venda.equipe === teamFilter);
+  const accelerationNeeded = Math.max(
+    model.requiredPerRemainingWorkday - model.averageDailyRevenue,
+    0,
+  );
+  const paceStatus =
+    model.projectedRevenue >= model.meta
+      ? {
+          title: "No ritmo",
+          detail:
+            model.remaining > 0
+              ? "Projeção suficiente para fechar o mês no alvo"
+              : "Meta já protegida no período",
+          tone: "good" as const,
+        }
+      : {
+          title: "Atenção",
+          detail:
+            accelerationNeeded > 0
+              ? `Acelerar ${currency.format(accelerationNeeded)} por dia útil`
+              : `Ainda faltam ${currency.format(model.remaining)}`,
+          tone: "warn" as const,
+        };
 
   return (
     <div className="managementScreen">
       <SalesPeriodToolbar
+        description="Compare ritmo, meta e equipe com leitura executiva e sem misturar tudo no mesmo nível."
+        eyebrow="Gestão"
         monthFilter={monthFilter}
         monthOptions={monthOptions}
         periodMode={periodMode}
@@ -961,8 +1051,8 @@ function ManagementView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
         }}
       />
       <section className="managementHero">
-        <article>
-          <span className="eyebrow">Visao executiva</span>
+        <article className="managementHeroPrimary">
+          <span className="eyebrow">Visão executiva</span>
           <h2>{currency.format(model.total)}</h2>
           <p>{model.baseGoalPct.toFixed(1)}% da meta base / {model.goalPct.toFixed(1)}% da superação</p>
         </article>
@@ -976,20 +1066,24 @@ function ManagementView({ vendas, meta }: { vendas: Venda[]; meta: number }) {
           <h2>{currency.format(model.projectedRevenue)}</h2>
           <p>Média diária {currency.format(model.averageDailyRevenue)}</p>
         </article>
-        <article>
-          <span className="eyebrow">Melhor dia</span>
-          <h2>{model.bestDay ? compactCurrency.format(model.bestDay.total) : "R$ 0"}</h2>
-          <p>{model.bestDay ? formatDayMonth(model.bestDay.data) : "Sem movimento"}</p>
+        <article className={`managementHeroStatus ${paceStatus.tone}`}>
+          <span className="eyebrow">Ritmo da meta</span>
+          <h2>{paceStatus.title}</h2>
+          <p>{paceStatus.detail}</p>
         </article>
       </section>
 
-      <section className="managementGrid">
+      <section className="managementGrid managementCommandGrid">
         <PacePanel model={model} />
-        <SellerTable title="Top vendedores no mês" ranking={model.overallRanking} />
+        <TeamComparison
+          subtitle="Participação na receita por equipe"
+          teams={model.teamSummary}
+          title="Comercial x Jurídico"
+        />
       </section>
 
-      <section className="managementGrid managementGridWide">
-        <TeamComparison teams={model.teamSummary} />
+      <section className="managementGrid managementSupportGrid">
+        <SellerTable title="Top vendedores no mês" ranking={model.overallRanking} />
         <DailyRevenuePanel days={model.days} monthLabel={model.monthLabel} />
       </section>
 
@@ -1011,11 +1105,11 @@ function PacePanel({ model }: { model: DashboardModel }) {
           <strong>{currency.format(model.averageDailyRevenue)}</strong>
         </div>
         <div>
-          <span>Necessario por dia</span>
+          <span>Necessário por dia</span>
           <strong>{currency.format(model.requiredPerRemainingWorkday)}</strong>
         </div>
         <div>
-          <span>Ideal ate hoje</span>
+          <span>Ideal até hoje</span>
           <strong>{currency.format(model.idealRevenueToDate)}</strong>
         </div>
         <div>
@@ -1028,6 +1122,10 @@ function PacePanel({ model }: { model: DashboardModel }) {
             {model.elapsedWorkdays}/{model.totalWorkdays}
           </strong>
         </div>
+        <div>
+          <span>Melhor dia</span>
+          <strong>{model.bestDay ? compactCurrency.format(model.bestDay.total) : "R$ 0"}</strong>
+        </div>
       </div>
       <p className={model.goalPct >= 100 ? "partyMessage on" : "partyMessage"}>
         {model.goalPct >= 100
@@ -1038,12 +1136,20 @@ function PacePanel({ model }: { model: DashboardModel }) {
   );
 }
 
-function TeamComparison({ teams }: { teams: TeamSummary[] }) {
+function TeamComparison({
+  teams,
+  title = "Comercial x Jurídico",
+  subtitle = "Participação na receita",
+}: {
+  teams: TeamSummary[];
+  title?: string;
+  subtitle?: string;
+}) {
   return (
     <section className="managementPanel">
       <div className="sectionHeader">
-        <h2>Comercial x Jurídico</h2>
-        <span>Participação na receita</span>
+        <h2>{title}</h2>
+        <span>{subtitle}</span>
       </div>
       <div className="teamRows">
         {teams.map((team) => (
@@ -1630,6 +1736,60 @@ function MarketingView({
       const rateB = b.total > 0 ? b.qualified / b.total : 0;
       return rateB - rateA || b.qualified - a.qualified;
     })[0] ?? null;
+  const activeModeLabel = getMarketingModeLabel(periodMode);
+  const sourceLabel = formatSourceLabel(source, "leads");
+  const secondaryMarketingMetrics = [
+    {
+      key: "cpl",
+      label: "Custo por lead",
+      value: formatOptionalCurrency(financials.cpl, financials.hasInvestment),
+      detail: "Investimento / leads",
+      visible: true,
+    },
+    {
+      key: "cpa",
+      label: "Custo por venda",
+      value: formatOptionalCurrency(financials.cpa, financials.hasCpa),
+      detail: "Investimento / convertidos",
+      visible: true,
+    },
+    {
+      key: "ticket",
+      label: "Ticket médio",
+      value: formatOptionalCurrency(financials.averageTicket, financials.hasAverageTicket),
+      detail: "Receita / convertidos",
+      visible: true,
+    },
+    {
+      key: "roi",
+      label: "ROI",
+      value: formatOptionalPercent(financials.roi, financials.hasRoi),
+      detail: "Retorno sobre investimento",
+      visible: true,
+    },
+    {
+      key: "worked",
+      label: "Em contato",
+      value: formatOptionalNumber(actionSummary.actioned, actionSummary.hasActionData),
+      detail: "Leads trabalhados",
+      visible: actionSummary.hasActionData,
+    },
+    {
+      key: "workedRate",
+      label: "% leads trabalhados",
+      value: formatOptionalPercent(operationalMetrics.workedRate, actionSummary.hasActionData),
+      detail: "Acionados sobre recebidos",
+      visible: actionSummary.hasActionData,
+    },
+    {
+      key: "contactTime",
+      label: "Tempo médio de contato",
+      value: formatOptionalHours(operationalMetrics.averageContactHours),
+      detail: "Recebimento até acionamento",
+      visible: operationalMetrics.averageContactHours !== null,
+    },
+  ].filter((metric) => metric.visible);
+
   function clearMarketingFilters() {
     setPeriodMode("month");
     setMonthFilter(getCurrentMonthKey());
@@ -1640,124 +1800,143 @@ function MarketingView({
 
   return (
     <div className="marketingScreen">
-      <section className="marketingHeader">
-        <div>
+      <section className="marketingHeader marketingHeaderWide">
+        <div className="toolbarSummary">
           <span className="eyebrow">Marketing</span>
-          <h2>Marketing</h2>
-          <p>{source}</p>
+          <h2>Captação e conversão</h2>
+          <p>Filtre parceiro, mês ou intervalo e acompanhe volume, conversão e eficiência sem ruído visual.</p>
+          <div className="toolbarPills">
+            <span className="toolbarPill toolbarPillActive">{sourceSummary}</span>
+            <span className="toolbarPill">Comercial</span>
+            <span className="toolbarPill">{sourceLabel}</span>
+          </div>
         </div>
         <div className="marketingControls" aria-label="Controles de filtro do marketing">
           <div className="marketingFilterToolbar">
-            <div className="marketingFilterGroup">
+            <div className="marketingFilterGroup filterCard">
               <span className="filterGroupLabel">Período rápido</span>
               <div className="quickPeriodTabs">
-              {[
-                { mode: "yesterday" as const, label: "Ontem" },
-                { mode: "today" as const, label: "Hoje" },
-                { mode: "month" as const, label: "Este mês" },
-              ].map((item) => (
-                <button
-                  className={periodMode === item.mode ? "active" : ""}
-                  key={item.mode}
-                  title={`Filtrar por ${item.label.toLowerCase()}`}
-                  type="button"
-                  onClick={() => setPeriodMode(item.mode)}
-                >
-                  {item.label}
-                </button>
-              ))}
+                {[
+                  { mode: "yesterday" as const, label: "Ontem" },
+                  { mode: "today" as const, label: "Hoje" },
+                  { mode: "month" as const, label: "Este mês" },
+                ].map((item) => (
+                  <button
+                    className={periodMode === item.mode ? "active" : ""}
+                    key={item.mode}
+                    title={`Filtrar por ${item.label.toLowerCase()}`}
+                    type="button"
+                    onClick={() => {
+                      setPeriodMode(item.mode);
+                      if (item.mode === "month") {
+                        setMonthFilter(getCurrentMonthKey());
+                      }
+                      setRangeStart("");
+                      setRangeEnd("");
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="marketingFilterGroup marketingDateGroup">
+            <div className="marketingFilterGroup marketingDateGroup filterCard">
               <span className="filterGroupLabel">Datas</span>
               <div className="periodPickers">
-              <label>
-                <span>Mês</span>
-                <input
-                  title="Selecionar mês"
-                  type="month"
-                  value={monthFilter}
-                  onChange={(event) => {
-                    setMonthFilter(event.target.value || getCurrentMonthKey());
-                    setPeriodMode("month");
-                  }}
-                />
-              </label>
-              <label>
-                <span>Data inicial</span>
-                <input
-                  aria-label="Início do período"
-                  title="Data inicial"
-                  type="date"
-                  value={rangeStart}
-                  onChange={(event) => {
-                    setRangeStart(event.target.value);
-                    setPeriodMode("range");
-                  }}
-                />
-              </label>
-              <label>
-                <span>Data final</span>
-                <input
-                  aria-label="Fim do período"
-                  title="Data final"
-                  type="date"
-                  value={rangeEnd}
-                  onChange={(event) => {
-                    setRangeEnd(event.target.value);
-                    setPeriodMode("range");
-                  }}
-                />
-              </label>
+                <label>
+                  <span>Mês de referência</span>
+                  <input
+                    title="Selecionar mês"
+                    type="month"
+                    value={monthFilter}
+                    onChange={(event) => {
+                      setMonthFilter(event.target.value || getCurrentMonthKey());
+                      setPeriodMode("month");
+                    }}
+                  />
+                </label>
+                <label>
+                  <span>Data inicial</span>
+                  <input
+                    aria-label="Início do período"
+                    title="Data inicial"
+                    type="date"
+                    value={rangeStart}
+                    onChange={(event) => {
+                      setRangeStart(event.target.value);
+                      setPeriodMode("range");
+                    }}
+                  />
+                </label>
+                <label>
+                  <span>Data final</span>
+                  <input
+                    aria-label="Fim do período"
+                    title="Data final"
+                    type="date"
+                    value={rangeEnd}
+                    onChange={(event) => {
+                      setRangeEnd(event.target.value);
+                      setPeriodMode("range");
+                    }}
+                  />
+                </label>
               </div>
             </div>
 
-            <div className="marketingFilterGroup">
+            <div className="marketingFilterGroup filterCard marketingSegmentGroup">
               <span className="filterGroupLabel">Segmentação</span>
               <div className="filterTabs marketingTabs">
-            {marketingSourceOptions.map((item) => (
-              <button
-                className={sourceFilter === item.value ? "active" : ""}
-                key={item.value}
-                title={`Ver ${item.label}`}
-                type="button"
-                onClick={() => setSourceFilter(item.value)}
-              >
-                {item.label}
-                <span>{sourceCounts[item.value]}</span>
-              </button>
-            ))}
+                {marketingSourceOptions.map((item) => (
+                  <button
+                    className={sourceFilter === item.value ? "active" : ""}
+                    key={item.value}
+                    title={`Ver ${item.label}`}
+                    type="button"
+                    onClick={() => setSourceFilter(item.value)}
+                  >
+                    {item.label}
+                    <span>{sourceCounts[item.value]}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="marketingFilterGroup marketingActionGroup">
+            <div className="marketingFilterGroup marketingActionGroup filterCard">
               <span className="filterGroupLabel">Ações</span>
-              <div className="filterActions">
+              <div className="filterActions filterActionsStack">
+                <button
+                  className="filterSecondary"
+                  type="button"
+                  onClick={() => {
+                    setPeriodMode("month");
+                    setMonthFilter(getCurrentMonthKey());
+                    setRangeStart("");
+                    setRangeEnd("");
+                  }}
+                >
+                  Voltar para este mês
+                </button>
                 <button className="filterClear" type="button" onClick={clearMarketingFilters}>
                   Limpar filtros
                 </button>
-                <button
-                  className="filterApply"
-                  disabled
-                  title="Os filtros são aplicados automaticamente"
-                  type="button"
-                >
-                  Aplicar
-                </button>
+                <span className="filterStatusBadge">{activeModeLabel}</span>
               </div>
+              <p className="filterHint">Os filtros são aplicados automaticamente.</p>
             </div>
           </div>
-          <span className="periodSummary">
-            Exibindo: {periodSummary} | {sourceSummary} | Comercial
-          </span>
+          <div className="periodSummaryRow">
+            <span className="periodSummary">Exibindo {periodSummary}</span>
+            <span className="periodSummaryTag">{sourceSummary} • Comercial</span>
+          </div>
         </div>
       </section>
 
       <section className="marketingSection">
         <div className="marketingSectionHeader">
           <span>Funil principal</span>
-          <p>Volume, andamento e conversão do período selecionado.</p>
+          <p>Volume, conversão e leitura rápida do período selecionado.</p>
         </div>
         <div className="marketingKpis marketingKpisPrimary">
           <KpiCard
@@ -1771,12 +1950,6 @@ function MarketingView({
             value={String(todayLeads)}
             detail="Entrada do dia"
             tone="green"
-          />
-          <KpiCard
-            label="Em contato"
-            value={formatOptionalNumber(actionSummary.actioned, actionSummary.hasActionData)}
-            detail="Leads trabalhados"
-            tone="yellow"
           />
           <KpiCard
             label="Convertidos"
@@ -1814,40 +1987,18 @@ function MarketingView({
 
       <section className="marketingSection">
         <div className="marketingSectionHeader">
-          <span>Eficiência</span>
-          <p>Custos e produtividade para acompanhar qualidade do investimento.</p>
+          <span>Eficiência e acompanhamento</span>
+          <p>Custos, produtividade e resposta operacional do funil.</p>
         </div>
         <div className="marketingFinanceGrid marketingSecondaryGrid">
-          <MiniMetric
-            label="Custo por lead"
-            value={formatOptionalCurrency(financials.cpl, financials.hasInvestment)}
-            detail="Investimento / leads"
-          />
-          <MiniMetric
-            label="Custo por venda"
-            value={formatOptionalCurrency(financials.cpa, financials.hasCpa)}
-            detail="Investimento / convertidos"
-          />
-          <MiniMetric
-            label="Ticket médio"
-            value={formatOptionalCurrency(financials.averageTicket, financials.hasAverageTicket)}
-            detail="Receita / convertidos"
-          />
-          <MiniMetric
-            label="ROI"
-            value={formatOptionalPercent(financials.roi, financials.hasRoi)}
-            detail="Retorno sobre investimento"
-          />
-          <MiniMetric
-            label="Tempo médio contato"
-            value={formatOptionalHours(operationalMetrics.averageContactHours)}
-            detail="Recebimento até acionamento"
-          />
-          <MiniMetric
-            label="% leads trabalhados"
-            value={formatOptionalPercent(operationalMetrics.workedRate, actionSummary.hasActionData)}
-            detail="Acionados sobre recebidos"
-          />
+          {secondaryMarketingMetrics.map((metric) => (
+            <MiniMetric
+              detail={metric.detail}
+              key={metric.key}
+              label={metric.label}
+              value={metric.value}
+            />
+          ))}
         </div>
       </section>
 
@@ -1859,14 +2010,6 @@ function MarketingView({
         <div className="marketingAnalysisGrid">
           <LeadDailyPanel rows={dailyRows} />
           <LeadSourcePanel insights={sourceInsights} total={dateFilteredLeads.length} />
-          <LeadFunnelPanel
-            received={filteredLeads.length}
-            worked={actionSummary.actioned}
-            converted={financials.convertedLeads}
-            hasWorked={actionSummary.hasActionData}
-            hasConverted={financials.hasConversion}
-          />
-          <LeadQualityPanel leads={filteredLeads} />
         </div>
       </section>
 
@@ -2441,7 +2584,7 @@ function buildLeadDailyRows(leads: LeadMarketing[]): LeadDailyRow[] {
     rows.set(date, row);
   });
 
-  return [...rows.values()].sort((a, b) => b.total - a.total);
+  return [...rows.values()].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 function getMarketingInvestmentKind(investment: MarketingInvestment) {
