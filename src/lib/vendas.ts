@@ -71,7 +71,7 @@ export async function loadVendas(): Promise<VendasResponse> {
     vendas,
     leads: leadsResult.leads,
     marketingInvestments,
-    meta: readNumberEnv("DASHBOARD_META", 110000),
+    meta: readNumberEnv("DASHBOARD_META", 120000),
     refreshSeconds: readNumberEnv("DASHBOARD_REFRESH_SECONDS", 300),
     updatedAt: new Date().toISOString(),
     source,

@@ -523,7 +523,7 @@ function TvView({
         <div>
           <span className="livePill"><i />Ao vivo</span>
           <h2>Central de Vendas</h2>
-          <p>Meta base R$ 100 mil / superação R$ 110 mil</p>
+          <p>Meta R$ 110 mil / superação R$ 120 mil</p>
         </div>
         <div className="tvTime">
           <strong>{clock.time}</strong>
@@ -1129,7 +1129,7 @@ function PacePanel({ model }: { model: DashboardModel }) {
       </div>
       <p className={model.goalPct >= 100 ? "partyMessage on" : "partyMessage"}>
         {model.goalPct >= 100
-          ? "Meta de R$ 110 mil batida. Festa liberada."
+          ? "Meta de superação de R$ 120 mil batida. Festa liberada."
           : `Faltam ${currency.format(model.remaining)} para liberar a festa.`}
       </p>
     </section>
@@ -2928,7 +2928,7 @@ function buildDashboardModel(
   const workdays = options.workdays;
   const averageDailyRevenue = workdays.elapsed > 0 ? total / workdays.elapsed : 0;
   const projectedRevenue = averageDailyRevenue * workdays.total;
-  const baseGoal = 100000;
+  const baseGoal = 110000;
   const idealRevenueToDate =
     workdays.total > 0 ? meta * (workdays.elapsed / workdays.total) : 0;
   const rhythmDelta = total - idealRevenueToDate;
